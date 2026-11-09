@@ -57,6 +57,9 @@
   .actions button.on{border-color:var(--accent2);color:var(--accent2)}
   footer{margin-top:36px;padding:22px 0 10px;border-top:1px solid rgba(255,255,255,.06);color:var(--muted);font-size:13px;display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap}
   footer a{color:#c6cbd8}
+  .creator b{color:var(--accent2);font-weight:600}
+  .creator a{text-decoration:none;border-bottom:1px dashed #4a5166}
+  .creator a:hover{color:#fff;border-bottom-color:var(--accent2)}
   .toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%) translateY(20px);opacity:0;background:#1f2430;border:1px solid #2c3342;color:#fff;padding:10px 16px;border-radius:12px;font-size:14px;transition:.25s;z-index:9000;pointer-events:none}
   .toast.on{opacity:1;transform:translateX(-50%)}
   .cphoto{margin-top:8px;position:relative}
@@ -244,7 +247,8 @@
     так что без разрешения могут оштрафовать. Если всё-таки идёшь — не в одиночку, не в дождь/гололёд/ветер и не к краю.
   </p>
   <p class="note" style="border-left-color:var(--accent2)">🎮 Хочешь побегать по крышам без риска? Играй в <a href="#" id="openGame2" style="color:var(--accent2)">«Руфер Калининград»</a>.</p>
-  <footer><span>🏢 Руф·рандомайзер Калининград · <span id="footVisits"></span></span><span>Данные: © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a>, фото: Wikimedia Commons и пользователи</span>
+  <footer><span>🏢 Руф·рандомайзер Калининград · <span id="footVisits"></span></span>
+  <span class="creator">Создатель: <b>V1n41k</b> · ✉️ <a href="mailto:k8899320@gmail.com">k8899320@gmail.com</a></span><span>Данные: © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a>, фото: Wikimedia Commons и пользователи</span>
   <span style="flex-basis:100%;font-size:12px;opacity:.7">Для подсчёта посетителей и защиты от нарушителей сайт сохраняет IP-адрес. Он не публикуется.</span></footer>
 </div>
 <div class="toast" id="toast"></div>
@@ -658,7 +662,7 @@ function showBan(reason){
   const d=document.createElement("div"); d.id="banScreen";
   d.innerHTML=`<div class="banbox"><div style="font-size:54px">⛔</div><h2>Вы заблокированы создателем</h2>
     <p class="why">Причина: <b>${esc(reason||"не указана")}</b></p>
-    <p class="small">Если считаешь, что это ошибка — напиши создателю сайта.</p></div>`;
+    <p class="small">Если считаешь, что это ошибка — напиши создателю: <a href="mailto:k8899320@gmail.com" style="color:#c6cbd8">k8899320@gmail.com</a></p></div>`;
   document.body.appendChild(d); document.body.style.overflow="hidden";
   try{ document.getElementById("gameLayer").remove(); }catch(e){}
 }
