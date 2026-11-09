@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#0d0f14">
+<meta name="description" content="Рандомайзер высоток Калининграда: адрес, этажность, фото и карта.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏢</text></svg>">
+<title>Руф-рандомайзер · Калининград</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@500;800&family=Manrope:wght@400;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0d0f14; --panel:#161a22; --line:#262c38; --text:#eef1f6; --muted:#8b93a5;
+    --accent:#ff6a3d; --accent2:#ffb03d;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:radial-gradient(1200px 600px at 50% -200px,#2a1a14 0%,var(--bg) 60%);color:var(--text);
+       font-family:Manrope,system-ui,sans-serif;min-height:100vh}
+  .wrap{max-width:920px;margin:0 auto;padding:32px 18px 60px}
+  h1{font-family:Unbounded,sans-serif;font-weight:800;font-size:clamp(28px,6vw,52px);line-height:1;margin:0 0 8px;letter-spacing:-.02em}
+  h1 span{color:var(--accent)}
+  .sub{color:var(--muted);margin:0 0 26px;font-size:15px}
+  .controls{display:flex;gap:12px;flex-wrap:wrap;align-items:center;margin-bottom:22px}
+  button.spin{font-family:Unbounded,sans-serif;font-weight:800;font-size:20px;padding:18px 34px;border:0;border-radius:16px;cursor:pointer;
+       color:#1a0d06;background:linear-gradient(135deg,var(--accent),var(--accent2));box-shadow:0 10px 30px -8px rgba(255,106,61,.6);
+       transition:transform .1s}
+  button.spin:active{transform:scale(.97)}
+  button.spin:disabled{opacity:.5;cursor:wait}
+  label.f{color:var(--muted);font-size:14px;display:flex;align-items:center;gap:8px}
+  select{background:var(--panel);color:var(--text);border:1px solid var(--line);border-radius:10px;padding:8px 10px;font:inherit}
+  .count{color:var(--muted);font-size:13px}
+  .slot{font-family:Unbounded,sans-serif;font-size:clamp(18px,3.4vw,28px);font-weight:500;background:var(--panel);border:1px solid var(--line);
+        border-radius:16px;padding:20px 22px;min-height:76px;display:flex;align-items:center;overflow:hidden}
+  .slot.rolling{color:var(--muted);filter:blur(.4px)}
+  .card{margin-top:18px;background:var(--panel);border:1px solid var(--line);border-radius:18px;overflow:hidden;display:none}
+  .card.show{display:block;animation:pop .35s ease-out}
+  @keyframes pop{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+  .photo{position:relative;background:#0a0c10;aspect-ratio:16/10;display:flex;align-items:center;justify-content:center}
+  .photo img{width:100%;height:100%;object-fit:cover;display:block}
+  .photo .ph{color:var(--muted);text-align:center;padding:20px;font-size:15px}
+  .credit{position:absolute;left:0;right:0;bottom:0;padding:8px 12px;font-size:12px;color:#cfd5e1;background:linear-gradient(transparent,rgba(0,0,0,.75))}
+  .credit a{color:#fff}
+  .thumbs{display:flex;gap:6px;padding:8px;background:#0f1218;overflow-x:auto}
+  .thumbs img{height:56px;width:84px;object-fit:cover;border-radius:6px;cursor:pointer;opacity:.6;border:2px solid transparent}
+  .thumbs img.on{opacity:1;border-color:var(--accent)}
+  .info{padding:20px 22px;display:grid;gap:14px}
+  .addr{font-family:Unbounded,sans-serif;font-size:clamp(20px,3.6vw,30px);font-weight:500;margin:0}
+  .tags{display:flex;gap:8px;flex-wrap:wrap}
+  .tag{background:#1f2430;border:1px solid var(--line);border-radius:999px;padding:5px 12px;font-size:13px;color:#cfd5e1}
+  .tag b{color:var(--accent2)}
+  .links{display:flex;gap:10px;flex-wrap:wrap}
+  .links a,.links button{color:var(--text);text-decoration:none;background:#1f2430;border:1px solid var(--line);border-radius:10px;padding:10px 14px;font:inherit;font-size:14px;cursor:pointer}
+  .links a:hover,.links button:hover{border-color:var(--accent)}
+  #map{height:260px;border-top:1px solid var(--line)}
+  .note{margin-top:26px;color:var(--muted);font-size:13px;line-height:1.55;border-left:3px solid var(--accent);padding-left:12px}
+  .err{color:#ff8a7a}
+  html{-webkit-text-size-adjust:100%}
+  button,a{-webkit-tap-highlight-color:transparent;touch-action:manipulation}
+  @media (max-width:600px){
+    .wrap{padding:20px 14px 40px}
+    .sub{font-size:14px;margin-bottom:18px}
+    .controls{flex-direction:column;align-items:stretch;gap:10px}
+    button.spin{width:100%;font-size:18px;padding:18px}
+    label.f{justify-content:space-between}
+    select{font-size:16px;padding:10px 12px}
+    .count{text-align:center}
+    .slot{padding:16px;min-height:64px}
+    .info{padding:16px}
+    .links{display:grid;grid-template-columns:1fr 1fr}
+    .links a,.links button{text-align:center;padding:12px 8px}
+    #map{height:220px}
+    .photo{aspect-ratio:4/3}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Руф<span>·</span>рандомайзер<br><span>Калининград</span></h1>
+  <p class="sub">Жмёшь кнопку — получаешь случайную высотку Калининграда: адрес, этажность, фото и точку на карте.</p>
+
+  <div class="controls">
+    <button class="spin" id="spin" disabled>Загрузка домов…</button>
+    <label class="f">Этажей от
+      <select id="minLv">
+        <option value="9">9</option>
+        <option value="10" selected>10</option>
+        <option value="12">12</option>
+        <option value="14">14</option>
+        <option value="16">16</option>
+        <option value="20">20</option>
+      </select>
+    </label>
+    <span class="count" id="count"></span>
+  </div>
+
+  <div class="slot" id="slot">Нажми «Крутить» 🎰</div>
+
+  <div class="card" id="card">
+    <div class="photo" id="photo"></div>
+    <div class="thumbs" id="thumbs" style="display:none"></div>
+    <div class="info">
+      <h2 class="addr" id="addr"></h2>
+      <div class="tags" id="tags"></div>
+      <div class="links" id="links"></div>
+    </div>
+    <div id="map"></div>
+  </div>
+
+  <p class="note">
+    Дома берутся из OpenStreetMap (все здания в Калининграде с указанной этажностью и адресом), фото — с Wikimedia Commons рядом с домом,
+    а если там пусто — жми «Панорама Яндекса», там почти всегда есть вид улицы.
+    Открыт ли выход на крышу, сайт не знает: это нигде не публикуется. Плюс по закону крыша многоэтажки — общее имущество жильцов,
+    так что без разрешения могут оштрафовать. Если всё-таки идёшь — не в одиночку, не в дождь/гололёд/ветер и не к краю.
+  </p>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+const BBOX = "54.640,20.340,54.790,20.640"; // Калининград
+const OVERPASS = [
+  "https://overpass-api.de/api/interpreter",
+  "https://lz4.overpass-api.de/api/interpreter",
+  "https://z.overpass-api.de/api/interpreter",
+  "https://overpass.private.coffee/api/interpreter",
+  "https://overpass.kumi.systems/api/interpreter",
+  "https://maps.mail.ru/osm/tools/overpass/api/interpreter"
+];
+// Запасной список, если OpenStreetMap недоступен (без координат и фото)
+const FALLBACK = [
+  {street:"улица Гайдара", num:"90", lv:25, name:"ЖК «Огни Калининграда»"},
+  {street:"улица Гайдара", num:"94", lv:25, name:"ЖК «Огни Калининграда»"},
+  {street:"улица Генерала Челнокова", num:"27", lv:17, name:"ЖК «Высота 56»"},
+  {street:"улица Фрунзе", num:"75", lv:13, name:""}
+].map((b,i)=>({...b,id:"fb/"+i,fallback:true}));
+const CACHE_KEY = "kgd_highrises_v1";
+let all = [], pool = [], map, marker, lastId = null;
+
+const $ = id => document.getElementById(id);
+
+async function loadBuildings(){
+  try{
+    const c = JSON.parse(localStorage.getItem(CACHE_KEY)||"null");
+    if(c && Date.now()-c.t < 7*864e5 && c.d.length) return c.d;
+  }catch(e){}
+  const q = `[out:json][timeout:60];
+    (way["building"]["building:levels"]["addr:housenumber"](${BBOX});
+     relation["building"]["building:levels"]["addr:housenumber"](${BBOX}););
+    out center tags;`;
+  let errs=[];
+  for(const url of OVERPASS){
+    const host=new URL(url).host;
+    $("slot").textContent=`Загружаю дома из OpenStreetMap (${host})…`;
+    const ctl=new AbortController(), tm=setTimeout(()=>ctl.abort(),35000);
+    try{
+      const r = await fetch(url+"?data="+encodeURIComponent(q),{signal:ctl.signal});
+      clearTimeout(tm);
+      if(!r.ok) throw new Error("HTTP "+r.status);
+      const j = await r.json();
+      const d = j.elements.map(e=>{
+        const t=e.tags, lv=parseInt(t["building:levels"],10);
+        const street=t["addr:street"]||t["addr:place"]||"";
+        if(!lv||lv<9||!street) return null;
+        const c=e.center||{lat:e.lat,lon:e.lon};
+        return {id:e.type+"/"+e.id, lv, street, num:t["addr:housenumber"],
+                name:t.name||t["building:name"]||"", type:t.building, lat:c.lat, lon:c.lon,
+                year:t["building:start_date"]||t.start_date||"", h:t.height||""};
+      }).filter(Boolean);
+      if(!d.length) throw new Error("пустой ответ");
+      try{localStorage.setItem(CACHE_KEY,JSON.stringify({t:Date.now(),d}))}catch(e){}
+      return d;
+    }catch(e){clearTimeout(tm); errs.push(host+": "+(e.name==="AbortError"?"таймаут":e.message))}
+  }
+  const err=new Error(errs.join("; ")); throw err;
+}
+
+function applyFilter(){
+  const min = +$("minLv").value;
+  pool = all.filter(b=>b.lv>=min);
+  $("count").textContent = `в барабане: ${pool.length} домов`;
+  $("spin").disabled = !pool.length;
+}
+
+const label = b => `${b.street}, ${b.num}`;
+
+async function spin(){
+  if(!pool.length) return;
+  const btn=$("spin"), slot=$("slot");
+  btn.disabled=true; slot.classList.add("rolling");
+  let pick;
+  do{ pick = pool[Math.floor(Math.random()*pool.length)]; }while(pool.length>1 && pick.id===lastId);
+  lastId = pick.id;
+  // анимация барабана: всё медленнее и медленнее
+  let delay=40;
+  while(delay<320){
+    slot.textContent = label(pool[Math.floor(Math.random()*pool.length)]);
+    await new Promise(r=>setTimeout(r,delay));
+    delay*=1.13;
+  }
+  slot.classList.remove("rolling");
+  slot.textContent = "🏢 " + label(pick);
+  btn.disabled=false;
+  show(pick);
+}
+
+function show(b){
+  const card=$("card");
+  card.classList.remove("show"); void card.offsetWidth; card.classList.add("show");
+  $("addr").textContent = `Калининград, ${label(b)}`;
+  const tags=[`<span class="tag"><b>${b.lv}</b> этажей</span>`];
+  if(b.h) tags.push(`<span class="tag">высота ~<b>${b.h}</b> м</span>`);
+  if(b.year) tags.push(`<span class="tag">построен <b>${b.year}</b></span>`);
+  if(b.name) tags.push(`<span class="tag">${esc(b.name)}</span>`);
+  $("tags").innerHTML=tags.join("");
+  if(b.fallback){
+    const t=encodeURIComponent(`Калининград, ${label(b)}`);
+    $("links").innerHTML=`
+      <a href="https://yandex.ru/maps/22/kaliningrad/?text=${t}" target="_blank" rel="noopener">🗺 Яндекс Карты (там есть панорама)</a>
+      <a href="https://www.google.com/maps/search/?api=1&query=${t}" target="_blank" rel="noopener">🌐 Google Карты</a>
+      <a href="https://yandex.ru/images/search?text=${t}" target="_blank" rel="noopener">🖼 Фото в Яндекс Картинках</a>`;
+    $("photo").innerHTML=`<div class="ph">Запасной режим: OpenStreetMap не загрузился, поэтому фото и карты здесь нет.<br>Открой ссылки ниже.</div>`;
+    $("thumbs").style.display="none"; $("map").style.display="none";
+    return;
+  }
+  $("map").style.display="";
+  const ya=`https://yandex.ru/maps/?panorama%5Bpoint%5D=${b.lon},${b.lat}&panorama%5Bdirection%5D=0,0&l=stv,sta&ll=${b.lon},${b.lat}&z=17`;
+  const gm=`https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=${b.lat},${b.lon}`;
+  const ym=`https://yandex.ru/maps/?pt=${b.lon},${b.lat}&z=17&l=map`;
+  $("links").innerHTML=`
+    <a href="${ya}" target="_blank" rel="noopener">📷 Панорама Яндекса</a>
+    <a href="${gm}" target="_blank" rel="noopener">🌐 Street View</a>
+    <a href="${ym}" target="_blank" rel="noopener">🗺 Яндекс Карты</a>
+    <a href="https://www.openstreetmap.org/${b.id}" target="_blank" rel="noopener">OSM</a>
+    <button id="copy">📋 Копировать адрес</button>`;
+  $("copy").onclick=()=>{navigator.clipboard?.writeText(`Калининград, ${label(b)}`).then(()=>$("copy").textContent="✅ Скопировано").catch(()=>{})};
+  drawMap(b);
+  loadPhotos(b);
+}
+
+function drawMap(b){
+  if(typeof L==="undefined") return;
+  if(!map){
+    map=L.map("map",{scrollWheelZoom:false,dragging:!L.Browser.mobile,tap:false}).setView([b.lat,b.lon],17);
+    L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png",{maxZoom:19,attribution:"© OpenStreetMap"}).addTo(map);
+    marker=L.marker([b.lat,b.lon]).addTo(map);
+  }else{ map.setView([b.lat,b.lon],17); marker.setLatLng([b.lat,b.lon]); }
+  setTimeout(()=>map.invalidateSize(),50);
+}
+
+function dist(a,b,c,d){const R=6371e3,r=Math.PI/180,x=(d-b)*r*Math.cos((a+c)/2*r),y=(c-a)*r;return Math.sqrt(x*x+y*y)*R}
+
+async function loadPhotos(b){
+  const ph=$("photo"), th=$("thumbs");
+  ph.innerHTML=`<div class="ph">Ищу фото…</div>`; th.style.display="none"; th.innerHTML="";
+  const token = b.id;
+  try{
+    const url=`https://commons.wikimedia.org/w/api.php?action=query&format=json&origin=*`+
+      `&generator=geosearch&ggscoord=${b.lat}|${b.lon}&ggsradius=180&ggslimit=20&ggsnamespace=6`+
+      `&prop=imageinfo|coordinates&iiprop=url|extmetadata|mime&iiurlwidth=1100`;
+    const j=await (await fetch(url)).json();
+    if(lastId!==token) return;
+    const pics=Object.values(j.query?.pages||{})
+      .filter(p=>p.imageinfo&&/jpeg|png|webp/.test(p.imageinfo[0].mime))
+      .map(p=>{const c=p.coordinates?.[0];return{...p.imageinfo[0],title:p.title,d:c?dist(b.lat,b.lon,c.lat,c.lon):999}})
+      .sort((x,y)=>x.d-y.d).slice(0,8);
+    if(!pics.length) throw 0;
+    const set=i=>{
+      const p=pics[i], m=p.extmetadata||{};
+      const author=strip(m.Artist?.value||"Wikimedia Commons"), lic=m.LicenseShortName?.value||"";
+      ph.innerHTML=`<img src="${p.thumburl}" alt="Фото рядом с домом">
+        <div class="credit">Фото в ~${Math.round(p.d)} м от дома · ${esc(author)} ${lic?"· "+esc(lic):""} ·
+        <a href="${p.descriptionurl}" target="_blank" rel="noopener">Commons</a></div>`;
+      [...th.children].forEach((t,k)=>t.classList.toggle("on",k===i));
+    };
+    if(pics.length>1){
+      th.innerHTML=pics.map(p=>`<img src="${p.thumburl}" alt="">`).join("");
+      [...th.children].forEach((t,i)=>t.onclick=()=>set(i));
+      th.style.display="flex";
+    }
+    set(0);
+  }catch(e){
+    if(lastId!==token) return;
+    ph.innerHTML=`<div class="ph">На Wikimedia Commons рядом с этим домом фото нет.<br><br>
+      <a style="color:var(--accent2)" target="_blank" rel="noopener"
+       href="https://yandex.ru/maps/?panorama%5Bpoint%5D=${b.lon},${b.lat}&l=stv,sta&ll=${b.lon},${b.lat}&z=17">Открыть панораму Яндекса →</a></div>`;
+  }
+}
+
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const strip=s=>{const d=document.createElement("div");d.innerHTML=s;return d.textContent.trim()};
+
+$("spin").onclick=spin;
+$("minLv").onchange=applyFilter;
+
+function start(){
+  $("spin").disabled=true; $("spin").textContent="Загрузка домов…";
+  loadBuildings().then(d=>{
+    all=d; $("spin").textContent="🎰 Крутить"; applyFilter();
+    $("slot").textContent="Нажми «Крутить» 🎰";
+  }).catch(e=>{
+    all=FALLBACK; $("spin").textContent="🎰 Крутить (запасной список)"; applyFilter();
+    $("slot").innerHTML=`<span class="err" style="font-size:14px;font-family:Manrope,system-ui,sans-serif;line-height:1.45">
+      OpenStreetMap не ответил, включён короткий запасной список.<br>
+      Если открываешь файл внутри чата — скачай его и открой в Chrome/Firefox: в превью чата интернет-запросы заблокированы.<br>
+      <small>${esc(e.message)}</small><br>
+      <button onclick="start()" style="margin-top:10px;background:#1f2430;color:#eef1f6;border:1px solid #262c38;border-radius:10px;padding:10px 14px;font:inherit;cursor:pointer">🔄 Попробовать ещё раз</button></span>`;
+  });
+}
+start();
+</script>
+</body>
+</html>
