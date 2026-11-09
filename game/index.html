@@ -581,7 +581,8 @@ let deferred=null;
 window.addEventListener("beforeinstallprompt",e=>{ e.preventDefault(); deferred=e; $("install").style.display=""; });
 $("install").onclick=async()=>{ if(!deferred) return; deferred.prompt(); await deferred.userChoice; deferred=null; $("install").style.display="none"; };
 const standalone=matchMedia("(display-mode: standalone)").matches;
-if(!standalone) $("installHint").textContent="Чтобы играть без интернета: в Chrome меню ⋮ → «Установить приложение» / «Добавить на главный экран».";
+const embedded=window.top!==window.self;
+if(!standalone&&!embedded) $("installHint").textContent="Чтобы играть без интернета: в Chrome меню ⋮ → «Установить приложение» / «Добавить на главный экран».";
 if(matchMedia("(orientation: portrait)").matches && innerWidth<600) $("installHint").textContent="📱↻ Поверни телефон горизонтально — так видно больше крыш. "+$("installHint").textContent;
 if("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(()=>{});
 

@@ -98,7 +98,7 @@
 <div class="wrap">
   <h1>Руф<span>·</span>рандомайзер<br><span>Калининград</span></h1>
   <p class="sub">Жмёшь кнопку — получаешь случайную высотку Калининграда: адрес, этажность, фото и точку на карте.</p>
-  <a class="gamebtn" href="game/">🎮 Мини-игра «Руфер»</a>
+  <a class="gamebtn" href="#" id="openGame">🎮 Мини-игра «Руфер»</a>
 
   <div class="controls">
     <button class="spin" id="spin" disabled>Загрузка домов…</button>
@@ -144,7 +144,7 @@
     Открыт ли выход на крышу, сайт не знает: это нигде не публикуется. Плюс по закону крыша многоэтажки — общее имущество жильцов,
     так что без разрешения могут оштрафовать. Если всё-таки идёшь — не в одиночку, не в дождь/гололёд/ветер и не к краю.
   </p>
-  <p class="note" style="border-left-color:var(--accent2)">🎮 Хочешь побегать по крышам без риска? Играй в <a href="game/" style="color:var(--accent2)">«Руфер Калининград»</a>.</p>
+  <p class="note" style="border-left-color:var(--accent2)">🎮 Хочешь побегать по крышам без риска? Играй в <a href="#" id="openGame2" style="color:var(--accent2)">«Руфер Калининград»</a>.</p>
 </div>
 
 <script>
@@ -469,6 +469,22 @@ function start(){
   });
 }
 start();
+</script>
+<div id="gameLayer" style="display:none;position:fixed;inset:0;z-index:9999;background:#0b0e1a">
+  <button id="closeGame" aria-label="Закрыть игру" style="position:absolute;top:calc(max(8px,env(safe-area-inset-top)) + 40px);right:10px;z-index:2;width:36px;height:36px;border-radius:12px;border:1px solid #2c3342;background:rgba(31,36,48,.85);color:#eef1f6;font-size:20px;cursor:pointer">✕</button>
+  <iframe id="gameFrame" title="Руфер Калининград" allow="autoplay; fullscreen" style="border:0;width:100%;height:100%;display:block"></iframe>
+</div>
+<script>
+(function(){
+  var layer=document.getElementById("gameLayer"), frame=document.getElementById("gameFrame");
+  function open(e){ if(e) e.preventDefault(); if(!frame.src) frame.src="game/"; layer.style.display="block"; document.body.style.overflow="hidden";
+    setTimeout(function(){ try{ frame.focus(); frame.contentWindow.focus(); }catch(err){} },300); }
+  function close(){ layer.style.display="none"; document.body.style.overflow="";
+    try{ var w=frame.contentWindow; if(w.state==="play"){ w.state="paused"; w.show("paused"); } }catch(err){} }
+  ["openGame","openGame2"].forEach(function(id){ var a=document.getElementById(id); if(a) a.addEventListener("click",open); });
+  document.getElementById("closeGame").addEventListener("click",close);
+  if(location.hash==="#game") open();
+})();
 </script>
 </body>
 </html>
