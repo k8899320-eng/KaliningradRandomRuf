@@ -40,7 +40,7 @@
 
 <div class="ui" id="menu">
   <h1>РУФЕР<br><span>КАЛИНИНГРАД</span></h1>
-  <div class="sub">Беги по ночным крышам. Тап или пробел — прыжок, в воздухе можно прыгнуть ещё раз. Держи дольше — прыгнешь выше. Батуты подкидывают, бонусы 🧲 🪽 ⭐×2 помогают. Главное — не упади!</div>
+  <div class="sub">Беги по ночным крышам. Тап или пробел — прыжок. Держи дольше — прыгнешь выше и дальше. Собирай звёзды, бонусы 🧲 🪽 ⭐×2 помогают. Главное — не упади!</div>
   <div class="stat">Рекорд: <b id="best">0</b> м</div>
   <button class="big" id="play">▶ Играть</button>
   <div class="row">
@@ -132,7 +132,7 @@ const STYLES=["panel","brick","glass","old","neon"];
 let state="menu", t=0, speed, dist, starCount, roofs, items, parts, birds, fx=[], popups=[], player, camX, shake, lastTs=0, power={type:null,until:0}, nextMilestone;
 
 function reset(){
-  speed=300; dist=0; starCount=0; camX=0; shake=0; parts=[]; birds=[]; fx=[]; popups=[]; nextMilestone=500;
+  speed=220; dist=0; starCount=0; camX=0; shake=0; parts=[]; birds=[]; fx=[]; popups=[]; nextMilestone=500;
   power={type:null,until:0};
   roofs=[{x:-50,w:700,y:300,style:"panel",seed:1}]; items=[];
   player={x:PX,y:300,vy:0,ground:true,jumps:0,coyote:0,buf:0,run:0,dead:false,on:null};
@@ -143,26 +143,25 @@ function surfaceY(r){ return r.plat? r.baseY+Math.sin(t*r.spd+r.ph)*r.amp : r.y;
 
 function addRoof(){
   const prev=roofs[roofs.length-1];
-  const k=Math.min(1,(speed-300)/350);
+  const k=Math.min(1,(speed-220)/220);
   const prevY=prev.plat?prev.baseY:prev.y;
-  let gap=rnd(50+40*k, 90+110*k);
+  let gap=rnd(speed*.2, speed*.38);
   // иногда — большой провал с парящей платформой посередине
   if(Math.random()<.18+.1*k){
-    const g1=rnd(70,110+40*k), pw=rnd(80,120), py=Math.max(170,Math.min(320,prevY+rnd(-60,40)));
+    const g1=rnd(speed*.22,speed*.3), pw=rnd(speed*.42,speed*.52), py=Math.max(180,Math.min(320,prevY+rnd(-45,40)));
     const plat={x:prev.x+prev.w+g1,w:pw,baseY:py,y:py,amp:rnd(8,22),spd:rnd(1.5,2.6),ph:Math.random()*6,plat:true,style:"plat"};
     roofs.push(plat);
-    if(Math.random()<.8) for(let i=0;i<3;i++) items.push({x:plat.x+pw/2-28+i*28,y:py-45,kind:"star",plat});
-    gap=rnd(70,110+40*k);
+    if(Math.random()<.8) for(let i=0;i<3;i++) items.push({x:plat.x+pw/2-28+i*28,y:py-26,kind:"star",plat});
+    gap=rnd(speed*.22,speed*.33);
     return addRoofAfter(plat,gap,py,k);
   }
   addRoofAfter(prev,gap,prevY,k);
 }
 function addRoofAfter(prev,gap,prevY,k){
-  let y=prevY+rnd(-70,90); y=Math.max(170,Math.min(340,y));
+  let y=prevY+rnd(-55,90); y=Math.max(180,Math.min(340,y));
+  if(y<prevY-25) gap=Math.min(gap,speed*.3);
   const w=rnd(190-40*k, 430-120*k);
   const r={x:prev.x+prev.w+gap,w,y,style:pick(STYLES),seed:Math.random()*1e4|0};
-  // батут
-  if(w>220 && Math.random()<.18) r.spring=rnd(100,w-60);
   // голуби
   if(Math.random()<.35){ const n=1+(Math.random()*3|0); for(let i=0;i<n;i++) birds.push({x:r.x+rnd(40,w-30),y:r.y-6,vx:0,vy:0,fly:false,flap:Math.random()*6}); }
   roofs.push(r);
@@ -171,16 +170,16 @@ function addRoofAfter(prev,gap,prevY,k){
     const arc=Math.random()<.5;
     for(let i=0;i<(arc?5:3);i++){
       const ix=arc? prev.x+prev.w-20+i*(gap+40)/4 : r.x+rnd(40,Math.max(60,w-100))+i*28;
-      const iy=arc? Math.min(prevY,y)-40-Math.sin(i/4*Math.PI)*70 : y-45;
+      const iy=arc? Math.min(prevY,y)-22-Math.sin(i/4*Math.PI)*45 : y-26;
       items.push({x:ix,y:iy,kind:"star"});
     }
   }
   // бонус
-  if(Math.random()<.12) items.push({x:r.x+rnd(60,w-40),y:y-rnd(80,130),kind:pick(["magnet","wings","x2"])});
+  if(Math.random()<.12) items.push({x:r.x+rnd(60,w-40),y:y-rnd(28,60),kind:pick(["magnet","wings","x2"])});
 }
 
-const POWER={magnet:{icon:"🧲",name:"Магнит",dur:8},wings:{icon:"🪽",name:"Крылья",dur:9},x2:{icon:"✖️2",name:"Звёзды ×2",dur:10}};
-function maxJumps(){ return power.type==="wings"&&t<power.until?3:2; }
+const POWER={magnet:{icon:"🧲",name:"Магнит",dur:8},wings:{icon:"🪽",name:"Крылья — плавное падение",dur:9},x2:{icon:"✖️2",name:"Звёзды ×2",dur:10}};
+function maxJumps(){ return 1; }
 
 function jumpPress(){
   if(state!=="play") return;
@@ -218,12 +217,12 @@ function update(dt){
   for(const q of popups) q.life-=dt; popups=popups.filter(q=>q.life>0);
   if(state!=="play") return;
   const p=player;
-  if(!p.dead){ speed=Math.min(650,speed+9*dt); }
+  if(!p.dead){ speed=Math.min(440,speed+5*dt); }
   const dx=p.dead?speed*.3*dt:speed*dt;
   camX+=dx; dist+=dx; p.run+=dx;
   // физика
   const prevBottom=p.y;
-  const wingFall=(power.type==="wings"&&t<power.until&&p.vy>0)?.75:1;
+  const wingFall=(power.type==="wings"&&t<power.until&&p.vy>0)?.5:1;
   p.vy+=G*dt*(p.vy>0?1.15*wingFall:1); p.y+=p.vy*dt;
   if(p.vy>=0) p.sprung=false;
   p.coyote=Math.max(0,p.coyote-dt); p.buf=Math.max(0,p.buf-dt);
@@ -241,14 +240,13 @@ function update(dt){
   if(on && !p.dead){
     p.y=surfaceY(on); p.vy=0; p.ground=true; p.jumps=0; p.on=on;
     if(!wasGround) puff(p.x,p.y,4);
-    if(on.spring!==undefined && Math.abs(on.x+on.spring-wx)<22){ p.vy=SPRING; p.ground=false; p.jumps=1; p.sprung=true; on.boing=.3; sSpring(); puff(p.x,p.y,10,"#7dffb0"); }
-    else if(p.buf>0){p.buf=0; jumpPress();}
+    if(p.buf>0){p.buf=0; jumpPress();}
   } else { if(wasGround) p.coyote=.09; p.ground=false; p.on=null; }
   // предметы
   const magnet=power.type==="magnet"&&t<power.until;
   for(const it of items){
     if(it.got) continue;
-    if(it.plat) it.y=surfaceY(it.plat)-45;
+    if(it.plat) it.y=surfaceY(it.plat)-26;
     if(magnet && it.kind==="star"){ const ddx=wx-it.x, ddy=(p.y-16)-it.y, d=Math.hypot(ddx,ddy); if(d<200){ it.x+=ddx/d*500*dt; it.y+=ddy/d*500*dt; it.plat=null; } }
     if(Math.abs(it.x-wx)<20 && Math.abs(it.y-(p.y-16))<26){
       it.got=true;
