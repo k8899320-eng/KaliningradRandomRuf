@@ -146,6 +146,7 @@
 // Показывает любую ошибку прямо на странице (написано по-старому, чтобы работало везде)
 window.__started=false;
 window.onerror=function(msg,src,line){
+  window.__err=true;
   try{
     var s=document.getElementById("slot"), b=document.getElementById("spin");
     if(b) b.textContent="Ошибка";
@@ -153,7 +154,7 @@ window.onerror=function(msg,src,line){
   }catch(e){}
 };
 setTimeout(function(){
-  if(window.__started) return;
+  if(window.__started||window.__err) return;
   var s=document.getElementById("slot"), b=document.getElementById("spin");
   if(b) b.textContent="Не запустилось";
   if(s) s.innerHTML='<span style="color:#ff8a7a;font-size:14px;font-family:system-ui,sans-serif">Скрипт сайта не запустился — скорее всего, браузер слишком старый или это встроенный браузер (Telegram/VK). Открой сайт в Chrome или Safari и обнови до последней версии.</span>';
@@ -337,3 +338,128 @@ function drawMap(b){
 }
 
 function dist(a,b,c,d){const R=6371e3,r=Math.PI/180,x=(d-b)*r*Math.cos((a+c)/2*r),y=(c-a)*r;return Math.sqrt(x*x+y*y)*R}
+
+async function loadPhotos(b){
+  const ph=$("photo"), th=$("thumbs");
+  ph.innerHTML=`<div class="ph">Ищу фото…</div>`; th.style.display="none"; th.innerHTML="";
+  const token = b.id;
+  try{
+    const url=`https://commons.wikimedia.org/w/api.php?action=query&format=json&origin=*`+
+      `&generator=geosearch&ggscoord=${b.lat}|${b.lon}&ggsradius=180&ggslimit=20&ggsnamespace=6`+
+      `&prop=imageinfo|coordinates&iiprop=url|extmetadata|mime&iiurlwidth=1100`;
+    const j=await (await fetchT(url,15000)).json();
+    if(lastId!==token) return;
+    const pics=Object.values((j.query&&j.query.pages)||{})
+      .filter(p=>p.imageinfo&&/jpeg|png|webp/.test(p.imageinfo[0].mime))
+      .map(p=>{const c=p.coordinates&&p.coordinates[0];return Object.assign({},p.imageinfo[0],{title:p.title,d:c?dist(b.lat,b.lon,c.lat,c.lon):999})})
+      .sort((x,y)=>x.d-y.d).slice(0,8);
+    if(!pics.length) throw 0;
+    const set=i=>{
+      const p=pics[i], m=p.extmetadata||{};
+      const author=strip((m.Artist&&m.Artist.value)||"Wikimedia Commons"), lic=(m.LicenseShortName&&m.LicenseShortName.value)||"";
+      ph.innerHTML=`<img src="${p.thumburl}" alt="Фото рядом с домом">
+        <div class="credit">Фото в ~${Math.round(p.d)} м от дома · ${esc(author)} ${lic?"· "+esc(lic):""} ·
+        <a href="${p.descriptionurl}" target="_blank" rel="noopener">Commons</a></div>`;
+      Array.from(th.children).forEach((t,k)=>t.classList.toggle("on",k===i));
+    };
+    if(pics.length>1){
+      th.innerHTML=pics.map(p=>`<img src="${p.thumburl}" alt="">`).join("");
+      Array.from(th.children).forEach((t,i)=>t.onclick=()=>set(i));
+      th.style.display="flex";
+    }
+    set(0);
+  }catch(e){
+    if(lastId!==token) return;
+    ph.innerHTML=`<div class="ph">На Wikimedia Commons рядом с этим домом фото нет.<br><br>
+      <a style="color:var(--accent2)" target="_blank" rel="noopener"
+       href="https://yandex.ru/maps/?panorama%5Bpoint%5D=${b.lon},${b.lat}&l=stv,sta&ll=${b.lon},${b.lat}&z=17">Открыть панораму Яндекса →</a></div>`;
+  }
+}
+
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const strip=s=>{const d=document.createElement("div");d.innerHTML=s;return d.textContent.trim()};
+
+// ---------- Комментарии ----------
+const COMMENTS_ON = /^https:\/\/.+\.supabase\.co$/.test(SUPABASE_URL.replace(/\/$/,"")) && SUPABASE_KEY.length>20;
+const SB = SUPABASE_URL.replace(/\/$/,"")+"/rest/v1/comments";
+function sbHeaders(extra){
+  const h=Object.assign({"apikey":SUPABASE_KEY,"Content-Type":"application/json"},extra||{});
+  if(!SUPABASE_KEY.startsWith("sb_")) h.Authorization="Bearer "+SUPABASE_KEY;
+  return h;
+}
+let currentHouse=null;
+try{ $("cname").value=localStorage.getItem("roof_nick")||""; }catch(e){}
+
+function fmtDate(iso){
+  const d=new Date(iso), diff=(Date.now()-d)/1000;
+  if(diff<60) return "только что";
+  if(diff<3600) return Math.floor(diff/60)+" мин назад";
+  if(diff<86400) return Math.floor(diff/3600)+" ч назад";
+  return d.toLocaleDateString("ru-RU",{day:"numeric",month:"short",year:"numeric"});
+}
+function renderComments(list){
+  $("ccount").textContent=list.length?`(${list.length})`:"";
+  $("clist").innerHTML=list.length? list.map(c=>`<div class="citem"><div class="meta"><b>${esc(c.author||"аноним")}</b> · ${fmtDate(c.created_at)}</div><div class="txt">${esc(c.body)}</div></div>`).join("")
+    : `<div class="cmsg">Пока никто ничего не написал. Будь первым.</div>`;
+}
+async function loadComments(b){
+  const sameHouse = currentHouse===b.id;
+  currentHouse=b.id;
+  if(!COMMENTS_ON){
+    $("clist").innerHTML=`<div class="cmsg">Комментарии ещё не подключены: владельцу сайта нужно вставить ключи Supabase в index.html.</div>`;
+    $("csend").disabled=true; return;
+  }
+  $("csend").disabled=false; if(!sameHouse){ $("cmsg").textContent=""; $("ccount").textContent=""; }
+  $("clist").innerHTML=`<div class="cmsg">Загружаю комментарии…</div>`;
+  try{
+    const r=await fetchT(`${SB}?house_id=eq.${encodeURIComponent(b.id)}&select=author,body,created_at&order=created_at.desc&limit=100`,15000,{headers:sbHeaders()});
+    if(!r.ok) throw new Error("HTTP "+r.status);
+    const list=await r.json();
+    if(currentHouse===b.id) renderComments(list);
+  }catch(e){
+    if(currentHouse===b.id) $("clist").innerHTML=`<div class="cmsg err">Не удалось загрузить комментарии (${esc(e.message||e)}).</div>`;
+  }
+}
+$("cform").addEventListener("submit",async ev=>{
+  ev.preventDefault();
+  if(!COMMENTS_ON||!currentHouse) return;
+  if($("cweb").value) return; // бот
+  const body=$("ctext").value.trim(), author=($("cname").value.trim()||"аноним").slice(0,30);
+  if(!body){ $("cmsg").textContent="Напиши что-нибудь 🙂"; return; }
+  let last=0; try{ last=+localStorage.getItem("roof_last")||0; }catch(e){}
+  if(Date.now()-last<30000){ $("cmsg").textContent="Подожди немного перед следующим комментарием."; return; }
+  const house=currentHouse;
+  $("csend").disabled=true; $("cmsg").textContent="Отправляю…";
+  try{
+    const r=await fetchT(SB,15000,{method:"POST",headers:sbHeaders({"Prefer":"return=minimal"}),
+      body:JSON.stringify({house_id:house,author,body:body.slice(0,500)})});
+    if(!r.ok) throw new Error("HTTP "+r.status);
+    try{ localStorage.setItem("roof_nick",$("cname").value.trim()); localStorage.setItem("roof_last",Date.now()); }catch(e){}
+    $("ctext").value=""; $("cmsg").textContent="✅ Отправлено";
+    if(currentHouse===house) loadComments({id:house});
+  }catch(e){ $("cmsg").textContent="Не отправилось: "+(e.message||e); }
+  finally{ $("csend").disabled=false; }
+});
+
+$("spin").onclick=spin;
+$("minLv").onchange=applyFilter;
+
+function start(){
+  window.__started=true;
+  $("spin").disabled=true; $("spin").textContent="Загрузка домов…";
+  loadBuildings().then(d=>{
+    all=d; $("spin").textContent="🎰 Крутить"; applyFilter();
+    $("slot").textContent="Нажми «Крутить» 🎰";
+  }).catch(e=>{
+    all=FALLBACK; $("spin").textContent="🎰 Крутить (запасной список)"; applyFilter();
+    $("slot").innerHTML=`<span class="err" style="font-size:14px;font-family:Manrope,system-ui,sans-serif;line-height:1.45">
+      OpenStreetMap не ответил, включён короткий запасной список.<br>
+      Если открываешь файл внутри чата — скачай его и открой в Chrome/Firefox: в превью чата интернет-запросы заблокированы.<br>
+      <small>${esc(e.message)}</small><br>
+      <button onclick="start()" style="margin-top:10px;background:#1f2430;color:#eef1f6;border:1px solid #262c38;border-radius:10px;padding:10px 14px;font:inherit;cursor:pointer">🔄 Попробовать ещё раз</button></span>`;
+  });
+}
+start();
+</script>
+</body>
+</html>
