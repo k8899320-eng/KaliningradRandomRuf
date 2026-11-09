@@ -69,6 +69,14 @@
   #pprev{display:none;align-items:center;gap:8px}
   #pprev img{height:56px;border-radius:8px;border:1px solid #262c38}
   .confirm{font-size:13px;color:#cfd5e1;display:none;align-items:center;gap:6px}
+  /* Тёмная карта: инвертируем светлые плитки OSM в «ночной» вид */
+  #allmap .leaflet-tile-pane,#map .leaflet-tile-pane{filter:invert(1) hue-rotate(180deg) brightness(.82) contrast(.9) saturate(.35)}
+  #allmap .leaflet-container,#allmap.leaflet-container,#map.leaflet-container{background:#0f1218}
+  .leaflet-control-zoom a{background:#1f2430!important;color:#eef1f6!important;border-color:#2c3342!important}
+  .leaflet-control-attribution{background:rgba(13,15,20,.7)!important;color:#8b93a5!important}
+  .leaflet-control-attribution a{color:#c6cbd8!important}
+  .leaflet-tooltip{background:#1f2430;color:#eef1f6;border:1px solid #2c3342}
+  .leaflet-tooltip-top:before{border-top-color:#2c3342}
   #lightbox{position:fixed;inset:0;background:rgba(0,0,0,.88);display:none;align-items:center;justify-content:center;z-index:9500;cursor:zoom-out;padding:16px}
   #lightbox img{max-width:100%;max-height:100%;border-radius:12px}
   h1{font-family:Unbounded,sans-serif;font-weight:800;font-size:clamp(28px,6vw,52px);line-height:1;margin:0 0 8px;letter-spacing:-.02em}
