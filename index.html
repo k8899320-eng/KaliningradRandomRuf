@@ -7,8 +7,7 @@
 <meta name="description" content="Рандомайзер высоток Калининграда: адрес, этажность, фото и карта.">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏢</text></svg>">
 <title>Руф-рандомайзер · Калининград</title>
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
-<link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@500;800&family=Manrope:wght@400;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@500;800&family=Manrope:wght@400;600&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
 <style>
   :root{
     --bg:#0d0f14; --panel:#161a22; --line:#262c38; --text:#eef1f6; --muted:#8b93a5;
@@ -115,7 +114,6 @@
   </p>
 </div>
 
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
 const BBOX = "54.640,20.340,54.790,20.640"; // Калининград
 const OVERPASS = [
@@ -133,46 +131,80 @@ const FALLBACK = [
   {street:"улица Генерала Челнокова", num:"27", lv:17, name:"ЖК «Высота 56»"},
   {street:"улица Фрунзе", num:"75", lv:13, name:""}
 ].map((b,i)=>({...b,id:"fb/"+i,fallback:true}));
-const CACHE_KEY = "kgd_highrises_v1";
+const CACHE_KEY = "kgd_highrises_v2";
 let all = [], pool = [], map, marker, lastId = null;
 
 const $ = id => document.getElementById(id);
 
+const LEVELS_RE = "^(9|[1-9][0-9])$";
+function overpassQuery(){
+  return `[out:json][timeout:25];
+    (way["building"]["building:levels"~"${LEVELS_RE}"]["addr:housenumber"](${BBOX});
+     relation["building"]["building:levels"~"${LEVELS_RE}"]["addr:housenumber"](${BBOX}););
+    out center tags;`;
+}
+function parseOverpass(j){
+  return j.elements.map(e=>{
+    const t=e.tags||{}, lv=parseInt(t["building:levels"],10);
+    const street=t["addr:street"]||t["addr:place"]||"";
+    if(!lv||lv<9||!street) return null;
+    const c=e.center||{lat:e.lat,lon:e.lon};
+    return {id:e.type+"/"+e.id, lv, street, num:t["addr:housenumber"],
+            name:t.name||t["building:name"]||"", type:t.building, lat:c.lat, lon:c.lon,
+            year:t["building:start_date"]||t.start_date||"", h:t.height||""};
+  }).filter(Boolean);
+}
+async function fetchT(url,ms){
+  const ctl=new AbortController(), tm=setTimeout(()=>ctl.abort(),ms);
+  try{ return await fetch(url,{signal:ctl.signal}); } finally{ clearTimeout(tm); }
+}
 async function loadBuildings(){
   try{
     const c = JSON.parse(localStorage.getItem(CACHE_KEY)||"null");
     if(c && Date.now()-c.t < 7*864e5 && c.d.length) return c.d;
   }catch(e){}
-  const q = `[out:json][timeout:60];
-    (way["building"]["building:levels"]["addr:housenumber"](${BBOX});
-     relation["building"]["building:levels"]["addr:housenumber"](${BBOX}););
-    out center tags;`;
-  let errs=[];
-  for(const url of OVERPASS){
-    const host=new URL(url).host;
-    $("slot").textContent=`Загружаю дома из OpenStreetMap (${host})…`;
-    const ctl=new AbortController(), tm=setTimeout(()=>ctl.abort(),35000);
+  const errs=[], t0=Date.now();
+  const tick=setInterval(()=>{ const el=$("sec"); if(el) el.textContent=Math.round((Date.now()-t0)/1000)+" с"; },500);
+  const status=txt=>$("slot").innerHTML=`${txt} <span id="sec" style="color:var(--muted);margin-left:8px">0 с</span>`;
+  try{
+    // 1) готовый список рядом с сайтом (обновляется GitHub Actions)
+    status("Загружаю список домов…");
     try{
-      const r = await fetch(url+"?data="+encodeURIComponent(q),{signal:ctl.signal});
-      clearTimeout(tm);
+      const r=await fetchT("buildings.json?v="+Math.floor(Date.now()/36e5),10000);
       if(!r.ok) throw new Error("HTTP "+r.status);
-      const j = await r.json();
-      const d = j.elements.map(e=>{
-        const t=e.tags, lv=parseInt(t["building:levels"],10);
-        const street=t["addr:street"]||t["addr:place"]||"";
-        if(!lv||lv<9||!street) return null;
-        const c=e.center||{lat:e.lat,lon:e.lon};
-        return {id:e.type+"/"+e.id, lv, street, num:t["addr:housenumber"],
-                name:t.name||t["building:name"]||"", type:t.building, lat:c.lat, lon:c.lon,
-                year:t["building:start_date"]||t.start_date||"", h:t.height||""};
-      }).filter(Boolean);
-      if(!d.length) throw new Error("пустой ответ");
+      const d=(await r.json()).buildings;
+      if(!d||!d.length) throw new Error("пустой файл");
       try{localStorage.setItem(CACHE_KEY,JSON.stringify({t:Date.now(),d}))}catch(e){}
       return d;
-    }catch(e){clearTimeout(tm); errs.push(host+": "+(e.name==="AbortError"?"таймаут":e.message))}
-  }
-  const err=new Error(errs.join("; ")); throw err;
+    }catch(e){ errs.push("buildings.json: "+(e.name==="AbortError"?"таймаут":e.message)); }
+    // 2) напрямую из OpenStreetMap
+    const q=overpassQuery();
+    for(const url of OVERPASS){
+      const host=new URL(url).host;
+      status(`Загружаю из OpenStreetMap (${host})…`);
+      try{
+        const r=await fetchT(url+"?data="+encodeURIComponent(q),20000);
+        if(!r.ok) throw new Error("HTTP "+r.status);
+        const d=parseOverpass(await r.json());
+        if(!d.length) throw new Error("пустой ответ");
+        try{localStorage.setItem(CACHE_KEY,JSON.stringify({t:Date.now(),d}))}catch(e){}
+        return d;
+      }catch(e){ errs.push(host+": "+(e.name==="AbortError"?"таймаут":e.message)); }
+    }
+    throw new Error(errs.join("; "));
+  } finally { clearInterval(tick); }
 }
+
+// Leaflet подгружается в фоне; если не загрузится — просто не будет мини-карты
+let leafletReady=false, pendingMap=null;
+(function(){
+  const css=document.createElement("link"); css.rel="stylesheet";
+  css.href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"; document.head.appendChild(css);
+  const js=document.createElement("script"); js.async=true;
+  js.src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js";
+  js.onload=()=>{ leafletReady=true; if(pendingMap) drawMap(pendingMap); };
+  document.head.appendChild(js);
+})();
 
 function applyFilter(){
   const min = +$("minLv").value;
@@ -238,7 +270,7 @@ function show(b){
 }
 
 function drawMap(b){
-  if(typeof L==="undefined") return;
+  if(!leafletReady||typeof L==="undefined"){ pendingMap=b; return; }
   if(!map){
     map=L.map("map",{scrollWheelZoom:false,dragging:!L.Browser.mobile,tap:false}).setView([b.lat,b.lon],17);
     L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png",{maxZoom:19,attribution:"© OpenStreetMap"}).addTo(map);
