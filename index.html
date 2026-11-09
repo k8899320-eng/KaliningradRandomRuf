@@ -16,7 +16,61 @@
   *{box-sizing:border-box}
   body{margin:0;background:radial-gradient(1200px 600px at 50% -200px,#2a1a14 0%,var(--bg) 60%);color:var(--text);
        font-family:Manrope,system-ui,sans-serif;min-height:100vh}
-  .wrap{max-width:920px;margin:0 auto;padding:32px 18px 60px}
+  .wrap{max-width:920px;margin:0 auto;padding:0 18px 40px}
+  body{background:
+    radial-gradient(900px 500px at 85% -120px,rgba(255,106,61,.22),transparent 60%),
+    radial-gradient(700px 420px at -10% 10%,rgba(120,90,255,.16),transparent 60%),
+    var(--bg)}
+  .topbar{position:sticky;top:0;z-index:50;backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);background:rgba(13,15,20,.72);border-bottom:1px solid rgba(255,255,255,.06)}
+  .topbar .in{max-width:920px;margin:0 auto;padding:10px 18px;display:flex;align-items:center;gap:10px}
+  .logo{font-family:Unbounded,sans-serif;font-weight:800;font-size:16px;letter-spacing:-.01em;white-space:nowrap}
+  .logo span{color:var(--accent)}
+  .nav{margin-left:auto;display:flex;gap:6px;overflow-x:auto;scrollbar-width:none}
+  .nav::-webkit-scrollbar{display:none}
+  .nav a{color:#c6cbd8;text-decoration:none;font-size:13px;padding:7px 11px;border-radius:999px;border:1px solid transparent;white-space:nowrap}
+  .nav a:hover{border-color:#2c3342;color:#fff}
+  .hero{position:relative;padding:34px 0 0}
+  .skyline{display:block;width:100%;height:auto;margin:18px 0 -6px;opacity:.95}
+  .stats{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 18px}
+  .chip{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:999px;padding:6px 12px;font-size:13px;color:#cfd5e1}
+  .chip b{color:var(--accent2)}
+  .panel{background:linear-gradient(180deg,rgba(255,255,255,.035),rgba(255,255,255,.015));border:1px solid rgba(255,255,255,.07);border-radius:22px;padding:18px;margin-bottom:18px;box-shadow:0 20px 60px -30px rgba(0,0,0,.8)}
+  .section{margin-top:28px;scroll-margin-top:70px}
+  #card{scroll-margin-top:70px}
+  .section h2{font-family:Unbounded,sans-serif;font-weight:500;font-size:20px;margin:0 0 12px;display:flex;align-items:center;gap:8px}
+  .section h2 small{font-family:Manrope,sans-serif;font-size:13px;color:var(--muted);font-weight:400}
+  .tabs{display:flex;gap:6px;margin-bottom:12px}
+  .tabs button{background:#161a22;color:#c6cbd8;border:1px solid #262c38;border-radius:999px;padding:8px 14px;font:inherit;font-size:14px;cursor:pointer}
+  .tabs button.on{background:linear-gradient(135deg,var(--accent),var(--accent2));color:#1a0d06;border-color:transparent;font-weight:600}
+  .mini{display:grid;gap:8px}
+  .mrow{display:flex;align-items:center;gap:10px;background:#161a22;border:1px solid #262c38;border-radius:14px;padding:10px 12px;cursor:pointer;transition:border-color .15s,transform .15s}
+  .mrow:hover{border-color:var(--accent);transform:translateY(-1px)}
+  .mrow .lv{font-family:Unbounded,sans-serif;font-size:13px;color:#1a0d06;background:var(--accent2);border-radius:10px;padding:6px 8px;min-width:42px;text-align:center}
+  .mrow .a{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .mrow .x{color:var(--muted);background:none;border:0;font-size:16px;cursor:pointer;padding:4px}
+  .empty{color:var(--muted);font-size:14px;padding:10px 2px}
+  #allmap{height:420px;border-radius:18px;border:1px solid #262c38;overflow:hidden;background:#11141b;display:flex;align-items:center;justify-content:center;color:var(--muted)}
+  .legend{display:flex;gap:12px;flex-wrap:wrap;font-size:12px;color:var(--muted);margin-top:8px}
+  .legend i{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:5px;vertical-align:middle}
+  .actions{display:flex;gap:8px;flex-wrap:wrap}
+  .actions button{background:#1f2430;color:var(--text);border:1px solid var(--line);border-radius:10px;padding:9px 14px;font:inherit;font-size:14px;cursor:pointer}
+  .actions button.on{border-color:var(--accent2);color:var(--accent2)}
+  footer{margin-top:36px;padding:22px 0 10px;border-top:1px solid rgba(255,255,255,.06);color:var(--muted);font-size:13px;display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap}
+  footer a{color:#c6cbd8}
+  .toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%) translateY(20px);opacity:0;background:#1f2430;border:1px solid #2c3342;color:#fff;padding:10px 16px;border-radius:12px;font-size:14px;transition:.25s;z-index:9000;pointer-events:none}
+  .toast.on{opacity:1;transform:translateX(-50%)}
+  .cphoto{margin-top:8px;position:relative}
+  .cphoto img{max-width:100%;max-height:260px;border-radius:10px;display:block;cursor:zoom-in;border:1px solid #262c38}
+  .rep{background:none;border:0;color:var(--muted);font-size:12px;cursor:pointer;padding:4px 0;margin-top:4px}
+  .rep:hover{color:#ff8a7a}
+  .pickrow{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+  .filebtn{display:inline-flex;align-items:center;gap:6px;background:#1f2430;border:1px dashed #3a4256;border-radius:10px;padding:9px 12px;font-size:14px;cursor:pointer;color:#cfd5e1}
+  .filebtn input{display:none}
+  #pprev{display:none;align-items:center;gap:8px}
+  #pprev img{height:56px;border-radius:8px;border:1px solid #262c38}
+  .confirm{font-size:13px;color:#cfd5e1;display:none;align-items:center;gap:6px}
+  #lightbox{position:fixed;inset:0;background:rgba(0,0,0,.88);display:none;align-items:center;justify-content:center;z-index:9500;cursor:zoom-out;padding:16px}
+  #lightbox img{max-width:100%;max-height:100%;border-radius:12px}
   h1{font-family:Unbounded,sans-serif;font-weight:800;font-size:clamp(28px,6vw,52px);line-height:1;margin:0 0 8px;letter-spacing:-.02em}
   h1 span{color:var(--accent)}
   .sub{color:var(--muted);margin:0 0 26px;font-size:15px}
@@ -95,10 +149,23 @@
 </style>
 </head>
 <body>
+<div class="topbar"><div class="in">
+  <div class="logo">🏢 Руф<span>·</span>КЛД</div>
+  <nav class="nav"><a href="#mine" data-tab="fav">⭐ Избранное</a><a href="#mine" data-tab="hist">🕘 История</a><a href="#allmap-sec">🗺 Карта</a><a href="#" id="openGame3">🎮 Игра</a></nav>
+</div></div>
 <div class="wrap">
+  <div class="hero">
   <h1>Руф<span>·</span>рандомайзер<br><span>Калининград</span></h1>
-  <p class="sub">Жмёшь кнопку — получаешь случайную высотку Калининграда: адрес, этажность, фото и точку на карте.</p>
+  <p class="sub">Жмёшь кнопку — получаешь случайную высотку Калининграда: адрес, этажность, фото, вид с крыши от других и точку на карте.</p>
   <a class="gamebtn" href="#" id="openGame">🎮 Мини-игра «Руфер»</a>
+  <div class="stats" id="stats"></div>
+  <svg class="skyline" viewBox="0 0 900 90" preserveAspectRatio="none" aria-hidden="true">
+    <defs><linearGradient id="sg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2a2f45"/><stop offset="1" stop-color="#161a24"/></linearGradient></defs>
+    <path fill="url(#sg)" d="M0 90V62h30V40h26v22h18V28h34v34h14V50h24V18h10V6h4v12h10v44h22V36h30v54h0V54h20V30h36v32h16V44h22v-8h28v26h18V22h40v40h14V48h26V12h8v-8h4v8h8v50h20V40h30v22h16V30h34v32h20V46h26v16h18V26h30v36h22V50h40v40z"/>
+    <g fill="#ffd27a" opacity=".75"><rect x="38" y="46" width="4" height="5"/><rect x="88" y="34" width="4" height="5"/><rect x="96" y="48" width="4" height="5"/><rect x="176" y="28" width="4" height="5"/><rect x="250" y="44" width="4" height="5"/><rect x="330" y="38" width="4" height="5"/><rect x="420" y="30" width="4" height="5"/><rect x="430" y="44" width="4" height="5"/><rect x="560" y="22" width="4" height="5"/><rect x="640" y="48" width="4" height="5"/><rect x="700" y="38" width="4" height="5"/><rect x="790" y="34" width="4" height="5"/></g>
+  </svg>
+  </div>
+  <div class="panel">
 
   <div class="controls">
     <button class="spin" id="spin" disabled>Загрузка домов…</button>
@@ -116,6 +183,7 @@
   </div>
 
   <div class="slot" id="slot">Нажми «Крутить» 🎰</div>
+  </div>
 
   <div class="card" id="card">
     <div class="photo" id="photo"></div>
@@ -123,6 +191,7 @@
     <div class="info">
       <h2 class="addr" id="addr"></h2>
       <div class="tags" id="tags"></div>
+      <div class="actions"><button id="favBtn">☆ В избранное</button><button id="shareBtn">🔗 Поделиться домом</button></div>
       <div class="links" id="links"></div>
     </div>
     <div id="map"></div>
@@ -130,12 +199,29 @@
       <h3>💬 Комментарии <small id="ccount"></small></h3>
       <form class="cform" id="cform" autocomplete="off">
         <input id="cname" maxlength="30" placeholder="Ник (необязательно)">
-        <textarea id="ctext" maxlength="500" placeholder="Что скажешь про этот дом? Вид, подъезд, охрана…" required></textarea>
+        <textarea id="ctext" maxlength="500" placeholder="Что скажешь про этот дом? Вид, подъезд, охрана…"></textarea>
+        <div class="pickrow">
+          <label class="filebtn">📷 Фото с крыши<input type="file" id="cfile" accept="image/*"></label>
+          <span id="pprev"><img id="pimg" alt=""><button type="button" class="rep" id="pdel">✕ убрать</button></span>
+        </div>
+        <label class="confirm" id="pconf"><input type="checkbox" id="pok"> Это вид с крыши этого дома (не скрин и не случайное фото)</label>
         <input class="hp" id="cweb" tabindex="-1" aria-hidden="true" placeholder="website">
         <div class="crow"><span class="cmsg" id="cmsg"></span><button id="csend" type="submit">Отправить</button></div>
       </form>
       <div class="clist" id="clist"></div>
     </div>
+  </div>
+
+  <div class="section" id="mine">
+    <h2>📌 Мои дома</h2>
+    <div class="tabs"><button data-t="fav" class="on">⭐ Избранное</button><button data-t="hist">🕘 История</button></div>
+    <div class="mini" id="mineList"></div>
+  </div>
+
+  <div class="section" id="allmap-sec">
+    <h2>🗺 Все высотки на карте <small id="mapcount"></small></h2>
+    <div id="allmap"><button id="loadAllMap" style="background:#1f2430;border:1px solid #2c3342;border-radius:12px;padding:12px 18px;color:#eef1f6;font:inherit;cursor:pointer">🗺 Показать карту</button></div>
+    <div class="legend"><span><i style="background:#7dd3fc"></i>9–11 эт.</span><span><i style="background:#ffd24f"></i>12–15</span><span><i style="background:#ffb03d"></i>16–19</span><span><i style="background:#ff6a3d"></i>20+</span><span>Нажми на точку — откроется дом</span></div>
   </div>
 
   <p class="note">
@@ -145,7 +231,10 @@
     так что без разрешения могут оштрафовать. Если всё-таки идёшь — не в одиночку, не в дождь/гололёд/ветер и не к краю.
   </p>
   <p class="note" style="border-left-color:var(--accent2)">🎮 Хочешь побегать по крышам без риска? Играй в <a href="#" id="openGame2" style="color:var(--accent2)">«Руфер Калининград»</a>.</p>
+  <footer><span>🏢 Руф·рандомайзер Калининград</span><span>Данные: © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a>, фото: Wikimedia Commons и пользователи</span></footer>
 </div>
+<div class="toast" id="toast"></div>
+<div id="lightbox"><img id="lbimg" alt=""></div>
 
 <script>
 // Показывает любую ошибку прямо на странице (написано по-старому, чтобы работало везде)
@@ -306,7 +395,7 @@ function show(b){
   if(b.year) tags.push(`<span class="tag">построен <b>${b.year}</b></span>`);
   if(b.name) tags.push(`<span class="tag">${esc(b.name)}</span>`);
   $("tags").innerHTML=tags.join("");
-  loadComments(b);
+  loadComments(b); afterShow(b);
   if(b.fallback){
     const t=encodeURIComponent(`Калининград, ${label(b)}`);
     $("links").innerHTML=`
@@ -406,11 +495,31 @@ function fmtDate(iso){
   if(diff<86400) return Math.floor(diff/3600)+" ч назад";
   return d.toLocaleDateString("ru-RU",{day:"numeric",month:"short",year:"numeric"});
 }
+const PHOTO_BUCKET="roof-photos", SUPA=SUPABASE_URL.replace(/\/$/,"");
+const photoUrl=path=>`${SUPA}/storage/v1/object/public/${PHOTO_BUCKET}/${path}`;
 function renderComments(list){
   $("ccount").textContent=list.length?`(${list.length})`:"";
-  $("clist").innerHTML=list.length? list.map(c=>`<div class="citem"><div class="meta"><b>${esc(c.author||"аноним")}</b> · ${fmtDate(c.created_at)}</div><div class="txt">${esc(c.body)}</div></div>`).join("")
-    : `<div class="cmsg">Пока никто ничего не написал. Будь первым.</div>`;
+  const photos=list.filter(c=>c.photo).length;
+  if(photos) $("ccount").textContent+=` · 📷 ${photos}`;
+  $("clist").innerHTML=list.length? list.map(c=>{
+    const ph=(c.photo&&/^[a-z0-9\/_.-]{1,200}$/.test(c.photo))?`<div class="cphoto"><img src="${photoUrl(c.photo)}" alt="Вид с крыши" loading="lazy" data-full="${photoUrl(c.photo)}"><button class="rep" data-rep="${c.id}">🚩 Не с крыши / плохое фото</button></div>`:"";
+    const txt=(c.body&&c.body!=="📷")?`<div class="txt">${esc(c.body)}</div>`:"";
+    return `<div class="citem"><div class="meta"><b>${esc(c.author||"аноним")}</b> · ${fmtDate(c.created_at)}${ph?" · 📷 вид с крыши":""}</div>${txt}${ph}</div>`;
+  }).join("") : `<div class="cmsg">Пока никто ничего не написал. Будь первым — можно с фото с крыши 📷</div>`;
 }
+$("clist").addEventListener("click",async e=>{
+  const img=e.target.closest(".cphoto img"); if(img){ $("lbimg").src=img.dataset.full; $("lightbox").style.display="flex"; return; }
+  const rb=e.target.closest("[data-rep]"); if(!rb) return;
+  let rid=""; try{ rid=localStorage.getItem("roof_rid")||""; if(!rid){ rid=Math.random().toString(36).slice(2)+Date.now().toString(36); localStorage.setItem("roof_rid",rid);} }catch(err){ rid=Math.random().toString(36).slice(2)+"xxxxxxxx"; }
+  rb.disabled=true; rb.textContent="Отправляю жалобу…";
+  try{
+    const r=await fetchT(`${SUPA}/rest/v1/photo_reports`,15000,{method:"POST",headers:sbHeaders({"Prefer":"return=minimal"}),body:JSON.stringify({comment_id:+rb.dataset.rep,reporter:rid})});
+    if(r.status===409){ rb.textContent="Ты уже жаловался на это фото"; return; }
+    if(!r.ok) throw await sbErr(r);
+    rb.textContent="✅ Жалоба принята. После 3 жалоб фото удалится";
+  }catch(err){ rb.textContent="Не отправилось: "+(err.message||err); rb.disabled=false; }
+});
+$("lightbox").onclick=()=>{ $("lightbox").style.display="none"; };
 async function loadComments(b){
   const sameHouse = currentHouse===b.id;
   currentHouse=b.id;
@@ -421,7 +530,8 @@ async function loadComments(b){
   $("csend").disabled=false; if(!sameHouse){ $("cmsg").textContent=""; $("ccount").textContent=""; }
   $("clist").innerHTML=`<div class="cmsg">Загружаю комментарии…</div>`;
   try{
-    const r=await fetchT(`${SB}?house_id=eq.${encodeURIComponent(b.id)}&select=author,body,created_at&order=created_at.desc&limit=100`,15000,{headers:sbHeaders()});
+    let r=await fetchT(`${SB}?house_id=eq.${encodeURIComponent(b.id)}&select=id,author,body,created_at,photo&order=created_at.desc&limit=100`,15000,{headers:sbHeaders()});
+    if(!r.ok) r=await fetchT(`${SB}?house_id=eq.${encodeURIComponent(b.id)}&select=id,author,body,created_at&order=created_at.desc&limit=100`,15000,{headers:sbHeaders()});
     if(!r.ok) throw await sbErr(r);
     const list=await r.json();
     if(currentHouse===b.id) renderComments(list);
@@ -433,22 +543,112 @@ $("cform").addEventListener("submit",async ev=>{
   ev.preventDefault();
   if(!COMMENTS_ON||!currentHouse) return;
   if($("cweb").value) return; // бот
-  const body=$("ctext").value.trim(), author=($("cname").value.trim()||"аноним").slice(0,30);
-  if(!body){ $("cmsg").textContent="Напиши что-нибудь 🙂"; return; }
+  let body=$("ctext").value.trim(); const author=($("cname").value.trim()||"аноним").slice(0,30);
+  if(!body&&!pickedPhoto){ $("cmsg").textContent="Напиши что-нибудь или добавь фото 🙂"; return; }
+  if(pickedPhoto&&!$("pok").checked){ $("cmsg").textContent="Отметь галочку, что это вид с крыши этого дома"; return; }
+  if(!body) body="📷";
   let last=0; try{ last=+localStorage.getItem("roof_last")||0; }catch(e){}
   if(Date.now()-last<30000){ $("cmsg").textContent="Подожди немного перед следующим комментарием."; return; }
   const house=currentHouse;
   $("csend").disabled=true; $("cmsg").textContent="Отправляю…";
   try{
+    let photo=null;
+    if(pickedPhoto){
+      $("cmsg").textContent="Загружаю фото…";
+      const path=house.toLowerCase().replace(/[^a-z0-9]/g,"-")+"/"+Date.now().toString(36)+"-"+Math.random().toString(36).slice(2,8)+".jpg";
+      const up=await fetchT(`${SUPA}/storage/v1/object/${PHOTO_BUCKET}/${path}`,30000,{method:"POST",headers:{"apikey":SUPABASE_KEY,"Content-Type":"image/jpeg","x-upsert":"false"},body:pickedPhoto});
+      if(!up.ok){ const e=await sbErr(up); throw new Error("фото не загрузилось ("+e.message+"). Возможно, хранилище фото ещё не включено"); }
+      photo=path;
+    }
+    const payload={house_id:house,author,body:body.slice(0,500)}; if(photo) payload.photo=photo;
     const r=await fetchT(SB,15000,{method:"POST",headers:sbHeaders({"Prefer":"return=minimal"}),
-      body:JSON.stringify({house_id:house,author,body:body.slice(0,500)})});
+      body:JSON.stringify(payload)});
     if(!r.ok) throw await sbErr(r);
     try{ localStorage.setItem("roof_nick",$("cname").value.trim()); localStorage.setItem("roof_last",Date.now()); }catch(e){}
-    $("ctext").value=""; $("cmsg").textContent="✅ Отправлено";
+    $("ctext").value=""; clearPhoto(); $("cmsg").textContent="✅ Отправлено";
     if(currentHouse===house) loadComments({id:house});
   }catch(e){ $("cmsg").textContent="Не отправилось: "+(e.message==="Failed to fetch"?"нет связи с Supabase (Failed to fetch) — возможно, сайт Supabase заблокирован у твоего провайдера":(e.message||e)); }
   finally{ $("csend").disabled=false; }
 });
+
+// ---------- Фото: выбор и сжатие ----------
+let pickedPhoto=null;
+function clearPhoto(){ pickedPhoto=null; $("cfile").value=""; $("pprev").style.display="none"; $("pconf").style.display="none"; $("pok").checked=false; }
+$("pdel").onclick=clearPhoto;
+$("cfile").addEventListener("change",async()=>{
+  const f=$("cfile").files[0]; if(!f) return;
+  if(!/^image\//.test(f.type)){ $("cmsg").textContent="Это не картинка"; clearPhoto(); return; }
+  $("cmsg").textContent="Готовлю фото…";
+  try{
+    const url=URL.createObjectURL(f), img=new Image();
+    await new Promise((ok,bad)=>{ img.onload=ok; img.onerror=bad; img.src=url; });
+    const k=Math.min(1,1600/Math.max(img.width,img.height)), c=document.createElement("canvas");
+    c.width=Math.round(img.width*k); c.height=Math.round(img.height*k);
+    c.getContext("2d").drawImage(img,0,0,c.width,c.height); URL.revokeObjectURL(url);
+    pickedPhoto=await new Promise(ok=>c.toBlob(ok,"image/jpeg",.82));
+    $("pimg").src=URL.createObjectURL(pickedPhoto); $("pprev").style.display="inline-flex"; $("pconf").style.display="flex"; $("cmsg").textContent="";
+  }catch(e){ $("cmsg").textContent="Не получилось открыть фото"; clearPhoto(); }
+});
+
+// ---------- Избранное, история, поделиться ----------
+const ls={get(k,d){try{const v=localStorage.getItem(k);return v===null?d:JSON.parse(v)}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
+let favs=ls.get("roof_favs",[]), hist=ls.get("roof_hist",[]), mineTab="fav", currentB=null;
+const byId=id=>all.find(b=>b.id===id);
+function toast(t){ const el=$("toast"); el.textContent=t; el.classList.add("on"); clearTimeout(el._t); el._t=setTimeout(()=>el.classList.remove("on"),1800); }
+function renderMine(){
+  document.querySelectorAll(".tabs button").forEach(b=>b.classList.toggle("on",b.dataset.t===mineTab));
+  const ids=mineTab==="fav"?favs:hist, list=ids.map(byId).filter(Boolean);
+  $("mineList").innerHTML=list.length? list.map(b=>`<div class="mrow" data-id="${b.id}"><span class="lv">${b.lv} эт</span><span class="a">${esc(label(b))}${b.name?` · <span style="color:var(--muted)">${esc(b.name)}</span>`:""}</span>${mineTab==="fav"?`<button class="x" data-unfav="${b.id}" title="Убрать">✕</button>`:""}</div>`).join("")
+    : `<div class="empty">${mineTab==="fav"?"Пока пусто. Нажми «☆ В избранное» у понравившегося дома.":"Здесь появятся дома, которые тебе выпадали."}</div>`;
+}
+document.querySelectorAll(".tabs button").forEach(b=>b.onclick=()=>{ mineTab=b.dataset.t; renderMine(); });
+document.querySelectorAll(".nav a[data-tab]").forEach(a=>a.addEventListener("click",()=>{ mineTab=a.dataset.tab; renderMine(); }));
+$("mineList").addEventListener("click",e=>{
+  const x=e.target.closest("[data-unfav]"); if(x){ e.stopPropagation(); favs=favs.filter(i=>i!==x.dataset.unfav); ls.set("roof_favs",favs); renderMine(); updFav(); return; }
+  const r=e.target.closest(".mrow"); if(r){ const b=byId(r.dataset.id); if(b) openHouse(b); }
+});
+function updFav(){ const on=currentB&&favs.includes(currentB.id); $("favBtn").textContent=on?"★ В избранном":"☆ В избранное"; $("favBtn").classList.toggle("on",!!on); }
+$("favBtn").onclick=()=>{ if(!currentB) return; if(favs.includes(currentB.id)){ favs=favs.filter(i=>i!==currentB.id); toast("Убрано из избранного"); } else { favs.unshift(currentB.id); toast("⭐ Добавлено в избранное"); } ls.set("roof_favs",favs); updFav(); renderMine(); };
+const hashOf=b=>"h-"+b.id.replace("/","-");
+$("shareBtn").onclick=async()=>{
+  if(!currentB) return;
+  const url=location.origin+location.pathname+"#"+hashOf(currentB), text="Калининград, "+label(currentB)+" — "+currentB.lv+" этажей";
+  try{ if(navigator.share){ await navigator.share({title:"Руф-рандомайзер",text,url}); return; } }catch(e){ if(e&&e.name==="AbortError") return; }
+  try{ await navigator.clipboard.writeText(url); toast("🔗 Ссылка на дом скопирована"); }catch(e){ prompt("Скопируй ссылку:",url); }
+};
+function afterShow(b){
+  currentB=b.fallback?null:b; $("favBtn").style.display=$("shareBtn").style.display=b.fallback?"none":"";
+  if(b.fallback) return;
+  hist=[b.id].concat(hist.filter(i=>i!==b.id)).slice(0,10); ls.set("roof_hist",hist);
+  try{ history.replaceState(null,"","#"+hashOf(b)); }catch(e){}
+  updFav(); renderMine();
+}
+function openHouse(b){ $("slot").textContent="🏢 "+label(b); lastId=b.id; show(b); $("card").scrollIntoView({behavior:"smooth",block:"start"}); }
+
+// ---------- Статистика ----------
+function renderStats(){
+  if(!all.length||all[0].fallback){ $("stats").innerHTML=""; return; }
+  const top=all.reduce((a,b)=>b.lv>a.lv?b:a), avg=all.reduce((s,b)=>s+b.lv,0)/all.length, n20=all.filter(b=>b.lv>=20).length;
+  $("stats").innerHTML=`<span class="chip">🏢 высоток: <b>${all.length}</b></span><span class="chip">📏 самая высокая: <b>${top.lv} эт</b> · ${esc(label(top))}</span><span class="chip">⌀ в среднем <b>${avg.toFixed(1)}</b> эт</span><span class="chip">🌆 20+ этажей: <b>${n20}</b></span>`;
+}
+
+// ---------- Карта всех высоток ----------
+let allMap=null;
+const lvColor=lv=>lv>=20?"#ff6a3d":lv>=16?"#ffb03d":lv>=12?"#ffd24f":"#7dd3fc";
+function buildAllMap(){
+  if(allMap||!all.length||all[0].fallback) return;
+  if(!leafletReady||typeof L==="undefined"){ $("allmap").innerHTML="Загружаю карту…"; setTimeout(buildAllMap,400); return; }
+  $("allmap").innerHTML="";
+  allMap=L.map("allmap",{scrollWheelZoom:false}).setView([54.715,20.51],12);
+  L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png",{maxZoom:19,attribution:"© OpenStreetMap"}).addTo(allMap);
+  for(const b of all){
+    const m=L.circleMarker([b.lat,b.lon],{radius:3+Math.min(6,(b.lv-9)/3),color:"#0d0f14",weight:1,fillColor:lvColor(b.lv),fillOpacity:.9}).addTo(allMap);
+    m.bindTooltip(`${label(b)} · ${b.lv} эт`);
+    m.on("click",()=>openHouse(b));
+  }
+  $("mapcount").textContent=`· ${all.length} домов`;
+}
+$("loadAllMap").onclick=buildAllMap;
 
 $("spin").onclick=spin;
 $("minLv").onchange=applyFilter;
@@ -459,6 +659,8 @@ function start(){
   loadBuildings().then(d=>{
     all=d; $("spin").textContent="🎰 Крутить"; applyFilter();
     $("slot").textContent="Нажми «Крутить» 🎰";
+    renderStats(); renderMine();
+    const hm=location.hash.match(/^#h-(way|relation)-(\d+)$/); if(hm){ const b=byId(hm[1]+"/"+hm[2]); if(b) openHouse(b); }
   }).catch(e=>{
     all=FALLBACK; $("spin").textContent="🎰 Крутить (запасной список)"; applyFilter();
     $("slot").innerHTML=`<span class="err" style="font-size:14px;font-family:Manrope,system-ui,sans-serif;line-height:1.45">
@@ -481,7 +683,7 @@ start();
     setTimeout(function(){ try{ frame.focus(); frame.contentWindow.focus(); }catch(err){} },300); }
   function close(){ layer.style.display="none"; document.body.style.overflow="";
     try{ var w=frame.contentWindow; if(w.state==="play"){ w.state="paused"; w.show("paused"); } }catch(err){} }
-  ["openGame","openGame2"].forEach(function(id){ var a=document.getElementById(id); if(a) a.addEventListener("click",open); });
+  ["openGame","openGame2","openGame3"].forEach(function(id){ var a=document.getElementById(id); if(a) a.addEventListener("click",open); });
   document.getElementById("closeGame").addEventListener("click",close);
   if(location.hash==="#game") open();
 })();
