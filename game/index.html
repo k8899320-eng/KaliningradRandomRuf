@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#0b0e1a">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="description" content="Руфер Калининград — беги по ночным крышам, прыгай через провалы и антенны.">
+<title>Руфер Калининград</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<style>
+  html,body{margin:0;height:100%;background:#0b0e1a;overflow:hidden;touch-action:none;-webkit-user-select:none;user-select:none;
+    font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;color:#eef1f6}
+  canvas{display:block;width:100vw;height:100vh;height:100dvh}
+  .ui{position:fixed;inset:0;overflow-y:auto;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:min(14px,2.5vh);text-align:center;
+      background:rgba(8,10,20,.55);padding:20px;pointer-events:auto}
+  .ui.hidden{display:none}
+  h1{margin:0;font-size:min(64px,8vw,11vh);font-weight:900;letter-spacing:-.02em;line-height:1}
+  h1 span{color:#ff6a3d}
+  .sub{color:#aab2c5;font-size:min(15px,3.8vh);max-width:420px;line-height:1.45}
+  .big{font-size:20px;font-weight:800;border:0;border-radius:16px;padding:min(16px,3vh) 36px;cursor:pointer;color:#1a0d06;
+       background:linear-gradient(135deg,#ff6a3d,#ffb03d);box-shadow:0 10px 30px -8px rgba(255,106,61,.6)}
+  .small{background:#1f2430;color:#eef1f6;border:1px solid #2c3342;border-radius:12px;padding:10px 16px;font-size:14px;cursor:pointer}
+  .row{display:flex;gap:10px;flex-wrap:wrap;justify-content:center}
+  .stat{font-size:18px}.stat b{color:#ffb03d}
+  .hud{position:fixed;top:max(10px,env(safe-area-inset-top));left:14px;right:14px;display:flex;justify-content:space-between;
+       font-weight:800;font-size:18px;text-shadow:0 2px 6px rgba(0,0,0,.6);pointer-events:none}
+  .hud b{color:#ffb03d}
+  #pause{position:fixed;top:max(8px,env(safe-area-inset-top));left:50%;transform:translateX(-50%);background:rgba(31,36,48,.7);
+         border:1px solid #2c3342;color:#eef1f6;border-radius:10px;width:40px;height:34px;font-size:16px;cursor:pointer}
+  .hint{color:#8b93a5;font-size:13px}
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div class="hud" id="hud"><div>🏃 <span id="dist">0</span> м</div><div>⭐ <span id="stars">0</span></div></div>
+<button id="pause" aria-label="Пауза">⏸</button>
+
+<div class="ui" id="menu">
+  <h1>РУФЕР<br><span>КАЛИНИНГРАД</span></h1>
+  <div class="sub">Беги по ночным крышам. Тап или пробел — прыжок, в воздухе можно прыгнуть ещё раз. Держи дольше — прыгнешь выше. Не падай и не врезайся в антенны.</div>
+  <div class="stat">Рекорд: <b id="best">0</b> м</div>
+  <button class="big" id="play">▶ Играть</button>
+  <div class="row">
+    <button class="small" id="sound">🔊 Звук: вкл</button>
+    <button class="small" id="install" style="display:none">📲 Установить</button>
+  </div>
+  <div class="hint" id="installHint"></div>
+</div>
+
+<div class="ui hidden" id="over">
+  <h1 id="overTitle">Сорвался!</h1>
+  <div class="stat">Пробежал: <b id="oDist">0</b> м · ⭐ <b id="oStars">0</b></div>
+  <div class="stat">Очки: <b id="oScore">0</b> · Рекорд: <b id="oBest">0</b> м</div>
+  <button class="big" id="again">↻ Ещё раз</button>
+  <button class="small" id="toMenu">В меню</button>
+</div>
+
+<div class="ui hidden" id="paused">
+  <h1>Пауза</h1>
+  <button class="big" id="resume">▶ Продолжить</button>
+  <button class="small" id="quit">В меню</button>
+</div>
+
+<script>
+"use strict";
+// ---------- Хранилище ----------
+const store={get(k,d){try{const v=localStorage.getItem(k);return v===null?d:JSON.parse(v)}catch(e){return d}},
+             set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
+let best=store.get("roofer_best",0), soundOn=store.get("roofer_sound",true);
+
+// ---------- Холст ----------
+const cv=document.getElementById("c"), ctx=cv.getContext("2d");
+const H=400; let W=700, scale=1, dpr=1, offY=0;
+function resize(){
+  dpr=Math.min(window.devicePixelRatio||1,2);
+  const w=window.innerWidth, h=window.innerHeight;
+  scale=Math.min(h/H, w/440); W=w/scale; offY=h/scale-H;
+  cv.width=Math.round(w*dpr); cv.height=Math.round(h*dpr);
+  makeSkyline();
+}
+window.addEventListener("resize",resize);
+
+// ---------- Звук ----------
+let ac=null;
+function beep(f1,f2,dur,type,vol){
+  if(!soundOn) return;
+  try{
+    ac=ac||new (window.AudioContext||window.webkitAudioContext)();
+    const o=ac.createOscillator(), g=ac.createGain(), t=ac.currentTime;
+    o.type=type||"square"; o.frequency.setValueAtTime(f1,t); o.frequency.exponentialRampToValueAtTime(f2,t+dur);
+    g.gain.setValueAtTime(vol||.08,t); g.gain.exponentialRampToValueAtTime(.0001,t+dur);
+    o.connect(g).connect(ac.destination); o.start(t); o.stop(t+dur);
+  }catch(e){}
+}
+const sJump=()=>beep(300,700,.12,"square",.06), sDouble=()=>beep(500,1100,.12,"square",.06),
+      sStar=()=>beep(900,1500,.09,"triangle",.09), sDie=()=>beep(400,60,.5,"sawtooth",.08);
+
+// ---------- Фон: дальние дома ----------
+let far=[], mid=[];
+function rnd(a,b){return a+Math.random()*(b-a)}
+function makeSkyline(){
+  far=[]; mid=[];
+  let x=0; while(x<W*2+200){const w=rnd(40,90); far.push({x,w,h:rnd(90,200),win:Math.random()}); x+=w+rnd(0,6);}
+  x=0; while(x<W*2+200){const w=rnd(50,110); mid.push({x,w,h:rnd(60,160),seed:Math.random()*1e4|0}); x+=w+rnd(2,14);}
+}
+const stars=[...Array(70)].map(()=>({x:Math.random(),y:Math.random()*.55,r:Math.random()*1.3+.3,t:Math.random()*6}));
+
+// ---------- Игра ----------
+const G=2300, JUMP=-760, DJUMP=-640, PX=110;
+let state="menu", t=0, speed, dist, starCount, roofs, items, parts, player, camX, shake, lastTs=0, holdJump=false;
+
+function reset(){
+  speed=300; dist=0; starCount=0; camX=0; shake=0; parts=[];
+  roofs=[{x:-50,w:700,y:300,style:0,ant:[]}]; items=[];
+  player={x:PX,y:300,vy:0,ground:true,jumps:0,coyote:0,buf:0,run:0,dead:false};
+  while(lastRoofEnd()<W+600) addRoof();
+}
+function lastRoofEnd(){const r=roofs[roofs.length-1]; return r.x+r.w;}
+function addRoof(){
+  const prev=roofs[roofs.length-1];
+  const k=Math.min(1,(speed-300)/350);
+  const gap=rnd(50+40*k, 90+110*k);
+  let y=prev.y+rnd(-70,90); y=Math.max(170,Math.min(340,y));
+  const w=rnd(180-40*k, 420-120*k);
+  const r={x:prev.x+prev.w+gap,w,y,style:Math.random()*3|0,ant:[]};
+  // антенны / вентиляция
+  const minAx=Math.max(130,speed*.4);
+  if(w>minAx+90 && Math.random()<.35+.35*k){
+    const n=(w>minAx+260 && Math.random()<.3+.3*k)?2:1;
+    for(let i=0;i<n;i++){
+      const ax=rnd(minAx,w-70);
+      if(r.ant.every(a=>Math.abs(a.x-ax)>Math.max(130,speed*.45))) r.ant.push({x:ax,w:rnd(14,22),h:rnd(18,30),kind:Math.random()<.5?0:1});
+    }
+  }
+  roofs.push(r);
+  // звёзды
+  if(Math.random()<.7){
+    const arc=Math.random()<.5;
+    for(let i=0;i<(arc?5:3);i++){
+      const ix=arc? prev.x+prev.w-20+i*(gap+40)/4 : r.x+rnd(40,Math.max(60,w-80))+i*28;
+      const iy=arc? Math.min(prev.y,y)-40-Math.sin(i/4*Math.PI)*70 : y-45;
+      items.push({x:ix,y:iy,got:false});
+    }
+  }
+}
+
+function jumpPress(){
+  if(state!=="play") return;
+  holdJump=true;
+  const p=player;
+  if(p.ground||p.coyote>0){ p.vy=JUMP; p.ground=false; p.coyote=0; p.jumps=1; sJump(); puff(p.x,p.y,6); }
+  else if(p.jumps<2){ p.vy=DJUMP; p.jumps=2; sDouble(); puff(p.x,p.y+10,8,"#ffb03d"); }
+  else p.buf=.12;
+}
+function jumpRelease(){ holdJump=false; if(player&&player.vy<-250) player.vy*=.55; }
+
+function puff(x,y,n,col){ for(let i=0;i<n;i++) parts.push({x,y,vx:rnd(-120,60),vy:rnd(-160,-20),life:rnd(.3,.6),c:col||"#cfd5e1"}); }
+
+function die(why){
+  if(player.dead) return; window.__why=why;
+  player.dead=true; shake=.4; sDie(); puff(player.x,player.y-14,24,"#ff6a3d");
+  setTimeout(gameOver,700);
+}
+function gameOver(){
+  state="over";
+  const m=Math.floor(dist/10), score=m+starCount*25, rec=m>best;
+  if(rec){best=m; store.set("roofer_best",best);}
+  $("overTitle").textContent=rec?"Новый рекорд! 🏆":"Сорвался!";
+  $("oDist").textContent=m; $("oStars").textContent=starCount; $("oScore").textContent=score; $("oBest").textContent=best;
+  show("over");
+}
+
+function update(dt){
+  t+=dt;
+  if(state!=="play") return;
+  const p=player;
+  if(!p.dead){ speed=Math.min(650,speed+9*dt); }
+  const dx=p.dead?speed*.3*dt:speed*dt;
+  camX+=dx; dist+=dx; p.run+=dx;
+  // физика
+  const prevBottom=p.y;
+  p.vy+=G*dt*(p.vy>0?1.15:1); p.y+=p.vy*dt;
+  p.coyote=Math.max(0,p.coyote-dt); p.buf=Math.max(0,p.buf-dt);
+  const wx=camX+p.x, halfW=11;
+  let on=null;
+  for(const r of roofs){
+    if(wx+halfW>r.x && wx-halfW<r.x+r.w){
+      if(prevBottom<=r.y+2 && p.y>=r.y && p.vy>=0){ on=r; }
+      else if(p.y>r.y+6 && wx+halfW>r.x && wx-halfW<r.x+8 && prevBottom>r.y+6 && !p.dead){ die("wall"); } // врезался в стену
+    }
+  }
+  const wasGround=p.ground;
+  if(on && !p.dead){ p.y=on.y; p.vy=0; p.ground=true; p.jumps=0; if(!wasGround) puff(p.x,p.y,4); if(p.buf>0){p.buf=0; jumpPress();} }
+  else { if(wasGround) p.coyote=.09; p.ground=false; }
+  // антенны
+  if(!p.dead) for(const r of roofs) for(const a of r.ant){
+    const ax=r.x+a.x;
+    if(wx+halfW-5>ax && wx-halfW+5<ax+a.w && p.y>r.y-a.h+6 && p.y-30<r.y) die("antenna");
+  }
+  // звёзды
+  for(const it of items) if(!it.got && Math.abs(it.x-wx)<20 && Math.abs(it.y-(p.y-16))<26){ it.got=true; starCount++; sStar(); puff(p.x,it.y,6,"#ffd76a"); }
+  // упал
+  if(p.y>H+80 && !p.dead){ die("fall"); }
+  // генерация
+  while(lastRoofEnd()<camX+W+600) addRoof();
+  roofs=roofs.filter(r=>r.x+r.w>camX-100); items=items.filter(i=>i.x>camX-50 && !(i.got&&i.x<camX));
+  for(const q of parts){ q.x+=q.vx*dt-dx; q.y+=q.vy*dt; q.vy+=600*dt; q.life-=dt; }
+  parts=parts.filter(q=>q.life>0);
+  shake=Math.max(0,shake-dt);
+  $("dist").textContent=Math.floor(dist/10); $("stars").textContent=starCount;
+}
+
+// ---------- Отрисовка ----------
+function winColor(seed,i,j){ const v=Math.sin(seed*13.1+i*7.7+j*3.3)*43758.5; const f=v-Math.floor(v); return f<.35?"#ffd27a":f<.42?"#9ad1ff":null; }
+function draw(){
+  ctx.setTransform(dpr*scale,0,0,dpr*scale,0,dpr*scale*offY);
+  if(shake>0) ctx.translate(rnd(-4,4)*shake*5,rnd(-4,4)*shake*5);
+  // небо
+  const g=ctx.createLinearGradient(0,0,0,H); g.addColorStop(0,"#0b0e1a"); g.addColorStop(.6,"#1b1838"); g.addColorStop(1,"#3a1f2e");
+  ctx.fillStyle="#0b0e1a"; ctx.fillRect(-20,-offY-20,W+40,offY+40); ctx.fillStyle=g; ctx.fillRect(-20,-20,W+40,H+40);
+  for(const s of stars){ ctx.globalAlpha=.4+.6*Math.abs(Math.sin(t*1.5+s.t)); ctx.fillStyle="#fff"; ctx.fillRect(s.x*W,s.y*(H+offY)-offY,s.r,s.r); }
+  ctx.globalAlpha=1;
+  // луна
+  ctx.fillStyle="#fff3d6"; ctx.beginPath(); ctx.arc(W*.8,70,26,0,7); ctx.fill();
+  ctx.fillStyle="#1b1838"; ctx.beginPath(); ctx.arc(W*.8+10,64,22,0,7); ctx.fill();
+  const cam=state==="play"||state==="over"||state==="paused"?camX:t*60;
+  // дальний план (+ шпиль собора)
+  ctx.fillStyle="#191a33";
+  const fo=(cam*.15)%(W+200);
+  for(const b of far){ let x=b.x-fo; if(x+b.w<-200) x+=W*2+200; ctx.fillRect(x,H-b.h,b.w,b.h); }
+  // средний план с окнами
+  const mo=(cam*.4)%(W+300);
+  for(const b of mid){
+    let x=b.x-mo; if(x+b.w<-300) x+=W*2+200; if(x>W) continue;
+    ctx.fillStyle="#22223f"; ctx.fillRect(x,H-b.h,b.w,b.h);
+    for(let i=0;i<b.w/14-1;i++) for(let j=0;j<b.h/18-1;j++){ const c=winColor(b.seed,i,j); if(c){ctx.fillStyle=c; ctx.globalAlpha=.55; ctx.fillRect(x+6+i*14,H-b.h+8+j*18,6,8);} }
+    ctx.globalAlpha=1;
+  }
+  if(state==="menu"){ drawMenuRoof(); return; }
+  // крыши
+  for(const r of roofs){
+    const x=r.x-camX; if(x>W+20||x+r.w<-20) continue;
+    const body=["#2d2f4a","#33304a","#2a3446"][r.style];
+    ctx.fillStyle=body; ctx.fillRect(x,r.y,r.w,H-r.y+20);
+    // окна
+    for(let i=0;i<(r.w-20)/22;i++) for(let j=0;j<(H-r.y)/26;j++){ const c=winColor(r.x|0,i,j); if(c){ctx.fillStyle=c; ctx.fillRect(x+12+i*22,r.y+20+j*26,9,12);} }
+    // парапет
+    ctx.fillStyle="#4b4f72"; ctx.fillRect(x-3,r.y-6,r.w+6,8);
+    ctx.fillStyle="#6a6f99"; ctx.fillRect(x-3,r.y-6,r.w+6,2);
+    // антенны
+    for(const a of r.ant){
+      const ax=x+a.x;
+      if(a.kind===0){ ctx.fillStyle="#8a90b5"; ctx.fillRect(ax+a.w/2-2,r.y-a.h-6,4,a.h); ctx.fillRect(ax,r.y-a.h-6,a.w,3); ctx.fillRect(ax+3,r.y-a.h+4,a.w-6,3);
+        ctx.fillStyle=(t*2%1<.5)?"#ff4040":"#7a2020"; ctx.fillRect(ax+a.w/2-2,r.y-a.h-10,4,4); }
+      else { ctx.fillStyle="#5d6386"; ctx.fillRect(ax,r.y-a.h-6,a.w,a.h); ctx.fillStyle="#7d84ad"; ctx.fillRect(ax-2,r.y-a.h-8,a.w+4,4); }
+    }
+  }
+  // звёзды-предметы
+  for(const it of items){ if(it.got) continue; const x=it.x-camX; if(x<-20||x>W+20) continue; drawStar(x,it.y+Math.sin(t*4+it.x)*3,8); }
+  // частицы
+  for(const q of parts){ ctx.globalAlpha=Math.max(0,q.life*2); ctx.fillStyle=q.c; ctx.fillRect(q.x,q.y,3,3); } ctx.globalAlpha=1;
+  if(!player.dead) drawRunner(player.x,player.y,player.ground,player.run,player.vy);
+}
+function drawStar(x,y,r){
+  ctx.fillStyle="#ffd76a"; ctx.beginPath();
+  for(let i=0;i<10;i++){ const a=i*Math.PI/5-Math.PI/2, rr=i%2?r*.45:r; ctx.lineTo(x+Math.cos(a)*rr,y+Math.sin(a)*rr); }
+  ctx.fill();
+}
+function drawRunner(x,y,ground,run,vy){
+  const ph=run/22, leg=ground?Math.sin(ph)*9:(vy<0?-6:5), arm=ground?Math.cos(ph)*8:-8;
+  ctx.lineCap="round"; ctx.lineWidth=4;
+  // ноги
+  ctx.strokeStyle="#1d2233"; ctx.beginPath(); ctx.moveTo(x,y-14); ctx.lineTo(x+leg,y); ctx.moveTo(x,y-14); ctx.lineTo(x-leg,y); ctx.stroke();
+  // тело (худи)
+  ctx.fillStyle="#ff6a3d"; ctx.fillRect(x-6,y-30,12,17);
+  // руки
+  ctx.strokeStyle="#ff8a5d"; ctx.beginPath(); ctx.moveTo(x,y-26); ctx.lineTo(x+arm,y-17); ctx.moveTo(x,y-26); ctx.lineTo(x-arm,y-17); ctx.stroke();
+  // голова + капюшон
+  ctx.fillStyle="#f1c9a5"; ctx.beginPath(); ctx.arc(x+1,y-36,6,0,7); ctx.fill();
+  ctx.fillStyle="#e2552c"; ctx.beginPath(); ctx.arc(x-1,y-37,6.5,Math.PI*.9,Math.PI*1.9); ctx.fill();
+}
+function drawMenuRoof(){
+  ctx.fillStyle="#2d2f4a"; ctx.fillRect(0,320,W,100); ctx.fillStyle="#4b4f72"; ctx.fillRect(0,314,W,8);
+  drawRunner(W/2,314,true,t*180,0);
+}
+
+// ---------- Цикл ----------
+function loop(ts){
+  const dt=Math.min(.033,(ts-lastTs)/1000||0); lastTs=ts;
+  update(dt); draw(); requestAnimationFrame(loop);
+}
+
+// ---------- Интерфейс ----------
+function $(id){return document.getElementById(id)}
+function show(id){ for(const k of ["menu","over","paused"]) $(k).classList.toggle("hidden",k!==id); $("hud").style.display=(id===null||id==="paused"||id==="over")?"":"none"; $("pause").style.display=id===null?"":"none"; }
+function start(){ reset(); state="play"; show(null); }
+$("best").textContent=best;
+$("play").onclick=start; $("again").onclick=start;
+$("toMenu").onclick=$("quit").onclick=()=>{ state="menu"; $("best").textContent=best; show("menu"); };
+$("pause").onclick=e=>{ e.stopPropagation(); if(state==="play"){state="paused"; show("paused");} };
+$("resume").onclick=()=>{ state="play"; show(null); };
+$("sound").textContent="🔊 Звук: "+(soundOn?"вкл":"выкл");
+$("sound").onclick=()=>{ soundOn=!soundOn; store.set("roofer_sound",soundOn); $("sound").textContent="🔊 Звук: "+(soundOn?"вкл":"выкл"); };
+
+cv.addEventListener("pointerdown",e=>{ e.preventDefault(); jumpPress(); });
+window.addEventListener("pointerup",jumpRelease);
+window.addEventListener("keydown",e=>{
+  if(e.repeat) return;
+  if(e.code==="Space"||e.code==="ArrowUp"||e.code==="KeyW"){ e.preventDefault(); if(state==="menu"||state==="over") start(); else jumpPress(); }
+  if(e.code==="Escape"||e.code==="KeyP"){ if(state==="play"){state="paused";show("paused");} else if(state==="paused"){state="play";show(null);} }
+});
+window.addEventListener("keyup",e=>{ if(e.code==="Space"||e.code==="ArrowUp"||e.code==="KeyW") jumpRelease(); });
+document.addEventListener("visibilitychange",()=>{ if(document.hidden&&state==="play"){state="paused";show("paused");} });
+
+// ---------- Установка (PWA) ----------
+let deferred=null;
+window.addEventListener("beforeinstallprompt",e=>{ e.preventDefault(); deferred=e; $("install").style.display=""; });
+$("install").onclick=async()=>{ if(!deferred) return; deferred.prompt(); await deferred.userChoice; deferred=null; $("install").style.display="none"; };
+const standalone=matchMedia("(display-mode: standalone)").matches;
+if(!standalone) $("installHint").textContent="Чтобы играть без интернета: в Chrome меню ⋮ → «Установить приложение» / «Добавить на главный экран».";
+if(matchMedia("(orientation: portrait)").matches && innerWidth<600) $("installHint").textContent="📱↻ Поверни телефон горизонтально — так видно больше крыш. "+$("installHint").textContent;
+if("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(()=>{});
+
+resize(); show("menu"); requestAnimationFrame(loop);
+</script>
+</body>
+</html>
