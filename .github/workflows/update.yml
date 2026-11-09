@@ -1,0 +1,96 @@
+name: Обновить дома и опубликовать сайт
+
+on:
+  push:
+    branches: [main]
+  schedule:
+    - cron: "17 3 * * 1"   # каждый понедельник
+  workflow_dispatch:        # кнопка «Run workflow» вручную
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Скачать высотки Калининграда из OpenStreetMap
+        run: |
+          python3 - <<'EOF'
+          import json, time, urllib.parse, urllib.request
+          BBOX = "54.640,20.340,54.790,20.640"
+          RE = "^(9|[1-9][0-9])$"
+          q = f'''[out:json][timeout:120];
+          (way["building"]["building:levels"~"{RE}"]["addr:housenumber"]({BBOX});
+           relation["building"]["building:levels"~"{RE}"]["addr:housenumber"]({BBOX}););
+          out center tags;'''
+          mirrors = [
+              "https://overpass-api.de/api/interpreter",
+              "https://overpass.private.coffee/api/interpreter",
+              "https://overpass.kumi.systems/api/interpreter",
+          ]
+          data = None
+          for attempt in range(3):
+              for url in mirrors:
+                  try:
+                      body = urllib.parse.urlencode({"data": q}).encode()
+                      req = urllib.request.Request(url, data=body, headers={"User-Agent": "roof-randomizer-kaliningrad"})
+                      with urllib.request.urlopen(req, timeout=180) as r:
+                          data = json.load(r)
+                      print("OK:", url); break
+                  except Exception as e:
+                      print("FAIL:", url, e)
+              if data: break
+              time.sleep(30)
+          if not data:
+              raise SystemExit("OpenStreetMap не ответил")
+          out = []
+          for e in data["elements"]:
+              t = e.get("tags", {})
+              try: lv = int(t.get("building:levels", "").split(".")[0])
+              except ValueError: continue
+              street = t.get("addr:street") or t.get("addr:place")
+              c = e.get("center")
+              if lv < 9 or not street or not c: continue
+              out.append({
+                  "id": f'{e["type"]}/{e["id"]}', "lv": lv, "street": street,
+                  "num": t.get("addr:housenumber", ""),
+                  "name": t.get("name") or t.get("building:name") or "",
+                  "type": t.get("building", ""),
+                  "lat": round(c["lat"], 6), "lon": round(c["lon"], 6),
+                  "year": t.get("building:start_date") or t.get("start_date") or "",
+                  "h": t.get("height", ""),
+              })
+          if not out:
+              raise SystemExit("пустой список")
+          json.dump({"updated": time.strftime("%Y-%m-%d"), "buildings": out},
+                    open("buildings.json", "w"), ensure_ascii=False, separators=(",", ":"))
+          print("домов:", len(out))
+          EOF
+
+      - name: Собрать сайт
+        run: |
+          mkdir -p _site
+          cp index.html buildings.json _site/
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
