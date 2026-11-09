@@ -19,16 +19,26 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
 
-      - name: Скачать высотки Калининграда из OpenStreetMap
+      - name: Взять текущий список домов с сайта
+        run: |
+          curl -fsSL --max-time 30 "https://k8899320-eng.github.io/KaliningradRandomRuf/buildings.json" -o buildings.json \
+            && python3 -c "import json;d=json.load(open('buildings.json'));assert d['buildings'];print('текущих домов:',len(d['buildings']))" \
+            || { echo "текущего списка нет"; rm -f buildings.json; }
+
+      - name: Обновить дома из OpenStreetMap (раз в неделю, вручную или если списка нет)
+        if: github.event_name != 'push' || hashFiles('buildings.json') == ''
+        timeout-minutes: 8
+        continue-on-error: true
         run: |
           python3 - <<'EOF'
-          import json, time, urllib.parse, urllib.request
+          import json, os, time, urllib.parse, urllib.request
           BBOX = "54.640,20.340,54.790,20.640"
           RE = "^(9|[1-9][0-9])$"
-          q = f'''[out:json][timeout:120];
+          q = f'''[out:json][timeout:90];
           (way["building"]["building:levels"~"{RE}"]["addr:housenumber"]({BBOX});
            relation["building"]["building:levels"~"{RE}"]["addr:housenumber"]({BBOX}););
           out center tags;'''
@@ -38,20 +48,17 @@ jobs:
               "https://overpass.kumi.systems/api/interpreter",
           ]
           data = None
-          for attempt in range(3):
-              for url in mirrors:
-                  try:
-                      body = urllib.parse.urlencode({"data": q}).encode()
-                      req = urllib.request.Request(url, data=body, headers={"User-Agent": "roof-randomizer-kaliningrad"})
-                      with urllib.request.urlopen(req, timeout=180) as r:
-                          data = json.load(r)
-                      print("OK:", url); break
-                  except Exception as e:
-                      print("FAIL:", url, e)
-              if data: break
-              time.sleep(30)
+          for url in mirrors:
+              try:
+                  body = urllib.parse.urlencode({"data": q}).encode()
+                  req = urllib.request.Request(url, data=body, headers={"User-Agent": "roof-randomizer-kaliningrad"})
+                  with urllib.request.urlopen(req, timeout=100) as r:
+                      data = json.load(r)
+                  print("OK:", url); break
+              except Exception as e:
+                  print("FAIL:", url, e)
           if not data:
-              raise SystemExit("OpenStreetMap не ответил")
+              raise SystemExit("OpenStreetMap не ответил — оставляю старый список")
           out = []
           for e in data["elements"]:
               t = e.get("tags", {})
@@ -70,7 +77,7 @@ jobs:
                   "h": t.get("height", ""),
               })
           if not out:
-              raise SystemExit("пустой список")
+              raise SystemExit("пустой список — оставляю старый")
           json.dump({"updated": time.strftime("%Y-%m-%d"), "buildings": out},
                     open("buildings.json", "w"), ensure_ascii=False, separators=(",", ":"))
           print("домов:", len(out))
@@ -79,7 +86,8 @@ jobs:
       - name: Собрать сайт
         run: |
           mkdir -p _site
-          cp index.html buildings.json _site/
+          cp index.html _site/
+          if [ -f buildings.json ]; then cp buildings.json _site/; else echo "::warning::нет buildings.json — сайт будет грузить дома напрямую"; fi
 
       - uses: actions/upload-pages-artifact@v3
         with:
