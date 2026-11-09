@@ -54,6 +54,10 @@
   #map{height:260px;border-top:1px solid var(--line)}
   .note{margin-top:26px;color:var(--muted);font-size:13px;line-height:1.55;border-left:3px solid var(--accent);padding-left:12px}
   .err{color:#ff8a7a}
+  .gamebtn{display:inline-flex;align-items:center;gap:6px;margin:0 0 22px;padding:12px 18px;border-radius:14px;text-decoration:none;font-weight:600;
+           color:#eef1f6;background:linear-gradient(135deg,#2a2350,#3a2a5e);border:1px solid #5b4a8e;box-shadow:0 8px 24px -10px rgba(140,110,255,.6)}
+  .gamebtn span{color:#b8acec;font-weight:400}
+  .gamebtn:hover{border-color:#9d8cff}
   .comments{border-top:1px solid var(--line);padding:18px 22px;display:grid;gap:12px}
   .comments h3{margin:0;font-family:Unbounded,sans-serif;font-weight:500;font-size:18px}
   .comments h3 small{color:var(--muted);font-family:Manrope,system-ui,sans-serif;font-size:13px;margin-left:6px}
@@ -84,6 +88,7 @@
     .slot{padding:16px;min-height:64px}
     .info{padding:16px}
     .comments{padding:16px}
+    .gamebtn{display:flex;justify-content:center;text-align:center;flex-wrap:wrap}
     .links{display:grid;grid-template-columns:1fr 1fr}
     .links a,.links button{text-align:center;padding:12px 8px}
     #map{height:220px}
@@ -95,6 +100,7 @@
 <div class="wrap">
   <h1>Руф<span>·</span>рандомайзер<br><span>Калининград</span></h1>
   <p class="sub">Жмёшь кнопку — получаешь случайную высотку Калининграда: адрес, этажность, фото и точку на карте.</p>
+  <a class="gamebtn" href="game/">🎮 Играть в «Руфер Калининград» <span>— бег по крышам</span></a>
 
   <div class="controls">
     <button class="spin" id="spin" disabled>Загрузка домов…</button>

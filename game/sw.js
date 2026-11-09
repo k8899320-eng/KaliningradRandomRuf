@@ -1,5 +1,5 @@
 // Офлайн-кэш: игра работает без интернета после первого запуска
-const CACHE = "roofer-v1";
+const CACHE = "roofer-v2";
 const FILES = ["./", "index.html", "manifest.webmanifest", "icon-192.png", "icon-512.png"];
 self.addEventListener("install", e => { e.waitUntil(caches.open(CACHE).then(c => c.addAll(FILES))); self.skipWaiting(); });
 self.addEventListener("activate", e => {

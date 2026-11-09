@@ -35,12 +35,12 @@
 </head>
 <body>
 <canvas id="c"></canvas>
-<div class="hud" id="hud"><div>🏃 <span id="dist">0</span> м</div><div>⭐ <span id="stars">0</span></div></div>
+<div class="hud" id="hud"><div>🏃 <span id="dist">0</span> м <span id="pw" style="margin-left:10px;color:#9ad1ff"></span></div><div>⭐ <span id="stars">0</span></div></div>
 <button id="pause" aria-label="Пауза">⏸</button>
 
 <div class="ui" id="menu">
   <h1>РУФЕР<br><span>КАЛИНИНГРАД</span></h1>
-  <div class="sub">Беги по ночным крышам. Тап или пробел — прыжок, в воздухе можно прыгнуть ещё раз. Держи дольше — прыгнешь выше. Не падай и не врезайся в антенны.</div>
+  <div class="sub">Беги по ночным крышам. Тап или пробел — прыжок, в воздухе можно прыгнуть ещё раз. Держи дольше — прыгнешь выше. Батуты подкидывают, бонусы 🧲 🪽 ⭐×2 помогают. Главное — не упади!</div>
   <div class="stat">Рекорд: <b id="best">0</b> м</div>
   <button class="big" id="play">▶ Играть</button>
   <div class="row">
@@ -96,68 +96,107 @@ function beep(f1,f2,dur,type,vol){
   }catch(e){}
 }
 const sJump=()=>beep(300,700,.12,"square",.06), sDouble=()=>beep(500,1100,.12,"square",.06),
-      sStar=()=>beep(900,1500,.09,"triangle",.09), sDie=()=>beep(400,60,.5,"sawtooth",.08);
+      sStar=()=>beep(900,1500,.09,"triangle",.09), sDie=()=>beep(400,60,.5,"sawtooth",.08),
+      sSpring=()=>beep(200,900,.25,"sine",.1), sPower=()=>{beep(600,1200,.15,"triangle",.08);setTimeout(()=>beep(900,1800,.15,"triangle",.08),120)}, sBoom=()=>beep(180,40,.35,"sawtooth",.05);
 
 // ---------- Фон: дальние дома ----------
 let far=[], mid=[];
 function rnd(a,b){return a+Math.random()*(b-a)}
+function pick(a){return a[Math.random()*a.length|0]}
 function makeSkyline(){
   far=[]; mid=[];
-  let x=0; while(x<W*2+200){const w=rnd(40,90); far.push({x,w,h:rnd(90,200),win:Math.random()}); x+=w+rnd(0,6);}
+  let x=0; while(x<W*2+200){const w=rnd(40,90); far.push({x,w,h:rnd(90,200),spire:Math.random()<.12}); x+=w+rnd(0,6);}
   x=0; while(x<W*2+200){const w=rnd(50,110); mid.push({x,w,h:rnd(60,160),seed:Math.random()*1e4|0}); x+=w+rnd(2,14);}
 }
 const stars=[...Array(70)].map(()=>({x:Math.random(),y:Math.random()*.55,r:Math.random()*1.3+.3,t:Math.random()*6}));
 
+// Палитры неба: ночь → рассвет → закат → ночь (меняются по мере бега)
+const SKIES=[
+  {top:"#0b0e1a",mid:"#1b1838",bot:"#3a1f2e",far:"#191a33",midB:"#22223f",star:1,moon:"#fff3d6"},
+  {top:"#1d2a55",mid:"#6a4a7a",bot:"#f19a6b",far:"#3b3560",midB:"#4a3f6b",star:.25,moon:"#ffe3b0"},
+  {top:"#2a5da8",mid:"#7fb0e0",bot:"#ffd29a",far:"#6d86b8",midB:"#5e6f9e",star:0,moon:"#fff8e0"},
+  {top:"#2b1e4a",mid:"#b24a5c",bot:"#ffb36b",far:"#4a2f55",midB:"#4f3456",star:.15,moon:"#ffd9a0"},
+];
+function lerpC(a,b,f){const p=s=>[1,3,5].map(i=>parseInt(s.slice(i,i+2),16)), A=p(a), B=p(b);
+  return "#"+A.map((v,i)=>Math.round(v+(B[i]-v)*f).toString(16).padStart(2,"0")).join("");}
+function skyAt(m){ // m — метры
+  const L=900, i=Math.floor(m/L)%SKIES.length, f=Math.min(1,Math.max(0,(m%L-L+150)/150));
+  const a=SKIES[i], b=SKIES[(i+1)%SKIES.length], o={};
+  for(const k in a) o[k]=typeof a[k]==="number"? a[k]+(b[k]-a[k])*f : lerpC(a[k],b[k],f);
+  return o;
+}
+
 // ---------- Игра ----------
-const G=2300, JUMP=-760, DJUMP=-640, PX=110;
-let state="menu", t=0, speed, dist, starCount, roofs, items, parts, player, camX, shake, lastTs=0, holdJump=false;
+const G=2300, JUMP=-760, DJUMP=-640, SPRING=-1150, PX=110;
+const STYLES=["panel","brick","glass","old","neon"];
+let state="menu", t=0, speed, dist, starCount, roofs, items, parts, birds, fx=[], popups=[], player, camX, shake, lastTs=0, power={type:null,until:0}, nextMilestone;
 
 function reset(){
-  speed=300; dist=0; starCount=0; camX=0; shake=0; parts=[];
-  roofs=[{x:-50,w:700,y:300,style:0,ant:[]}]; items=[];
-  player={x:PX,y:300,vy:0,ground:true,jumps:0,coyote:0,buf:0,run:0,dead:false};
+  speed=300; dist=0; starCount=0; camX=0; shake=0; parts=[]; birds=[]; fx=[]; popups=[]; nextMilestone=500;
+  power={type:null,until:0};
+  roofs=[{x:-50,w:700,y:300,style:"panel",seed:1}]; items=[];
+  player={x:PX,y:300,vy:0,ground:true,jumps:0,coyote:0,buf:0,run:0,dead:false,on:null};
   while(lastRoofEnd()<W+600) addRoof();
 }
 function lastRoofEnd(){const r=roofs[roofs.length-1]; return r.x+r.w;}
+function surfaceY(r){ return r.plat? r.baseY+Math.sin(t*r.spd+r.ph)*r.amp : r.y; }
+
 function addRoof(){
   const prev=roofs[roofs.length-1];
   const k=Math.min(1,(speed-300)/350);
-  const gap=rnd(50+40*k, 90+110*k);
-  let y=prev.y+rnd(-70,90); y=Math.max(170,Math.min(340,y));
-  const w=rnd(180-40*k, 420-120*k);
-  const r={x:prev.x+prev.w+gap,w,y,style:Math.random()*3|0,ant:[]};
-  // антенны / вентиляция
-  const minAx=Math.max(130,speed*.4);
-  if(w>minAx+90 && Math.random()<.35+.35*k){
-    const n=(w>minAx+260 && Math.random()<.3+.3*k)?2:1;
-    for(let i=0;i<n;i++){
-      const ax=rnd(minAx,w-70);
-      if(r.ant.every(a=>Math.abs(a.x-ax)>Math.max(130,speed*.45))) r.ant.push({x:ax,w:rnd(14,22),h:rnd(18,30),kind:Math.random()<.5?0:1});
-    }
+  const prevY=prev.plat?prev.baseY:prev.y;
+  let gap=rnd(50+40*k, 90+110*k);
+  // иногда — большой провал с парящей платформой посередине
+  if(Math.random()<.18+.1*k){
+    const g1=rnd(70,110+40*k), pw=rnd(80,120), py=Math.max(170,Math.min(320,prevY+rnd(-60,40)));
+    const plat={x:prev.x+prev.w+g1,w:pw,baseY:py,y:py,amp:rnd(8,22),spd:rnd(1.5,2.6),ph:Math.random()*6,plat:true,style:"plat"};
+    roofs.push(plat);
+    if(Math.random()<.8) for(let i=0;i<3;i++) items.push({x:plat.x+pw/2-28+i*28,y:py-45,kind:"star",plat});
+    gap=rnd(70,110+40*k);
+    return addRoofAfter(plat,gap,py,k);
   }
+  addRoofAfter(prev,gap,prevY,k);
+}
+function addRoofAfter(prev,gap,prevY,k){
+  let y=prevY+rnd(-70,90); y=Math.max(170,Math.min(340,y));
+  const w=rnd(190-40*k, 430-120*k);
+  const r={x:prev.x+prev.w+gap,w,y,style:pick(STYLES),seed:Math.random()*1e4|0};
+  // батут
+  if(w>220 && Math.random()<.18) r.spring=rnd(100,w-60);
+  // голуби
+  if(Math.random()<.35){ const n=1+(Math.random()*3|0); for(let i=0;i<n;i++) birds.push({x:r.x+rnd(40,w-30),y:r.y-6,vx:0,vy:0,fly:false,flap:Math.random()*6}); }
   roofs.push(r);
   // звёзды
-  if(Math.random()<.7){
+  if(Math.random()<.65){
     const arc=Math.random()<.5;
     for(let i=0;i<(arc?5:3);i++){
-      const ix=arc? prev.x+prev.w-20+i*(gap+40)/4 : r.x+rnd(40,Math.max(60,w-80))+i*28;
-      const iy=arc? Math.min(prev.y,y)-40-Math.sin(i/4*Math.PI)*70 : y-45;
-      items.push({x:ix,y:iy,got:false});
+      const ix=arc? prev.x+prev.w-20+i*(gap+40)/4 : r.x+rnd(40,Math.max(60,w-100))+i*28;
+      const iy=arc? Math.min(prevY,y)-40-Math.sin(i/4*Math.PI)*70 : y-45;
+      items.push({x:ix,y:iy,kind:"star"});
     }
   }
+  // бонус
+  if(Math.random()<.12) items.push({x:r.x+rnd(60,w-40),y:y-rnd(80,130),kind:pick(["magnet","wings","x2"])});
 }
+
+const POWER={magnet:{icon:"🧲",name:"Магнит",dur:8},wings:{icon:"🪽",name:"Крылья",dur:9},x2:{icon:"✖️2",name:"Звёзды ×2",dur:10}};
+function maxJumps(){ return power.type==="wings"&&t<power.until?3:2; }
 
 function jumpPress(){
   if(state!=="play") return;
-  holdJump=true;
   const p=player;
   if(p.ground||p.coyote>0){ p.vy=JUMP; p.ground=false; p.coyote=0; p.jumps=1; sJump(); puff(p.x,p.y,6); }
-  else if(p.jumps<2){ p.vy=DJUMP; p.jumps=2; sDouble(); puff(p.x,p.y+10,8,"#ffb03d"); }
+  else if(p.jumps<maxJumps()){ p.vy=DJUMP; p.jumps++; sDouble(); puff(p.x,p.y+10,8,p.jumps>2?"#9ad1ff":"#ffb03d"); }
   else p.buf=.12;
 }
-function jumpRelease(){ holdJump=false; if(player&&player.vy<-250) player.vy*=.55; }
+function jumpRelease(){ if(player&&player.vy<-250&&!player.sprung) player.vy*=.55; }
 
 function puff(x,y,n,col){ for(let i=0;i<n;i++) parts.push({x,y,vx:rnd(-120,60),vy:rnd(-160,-20),life:rnd(.3,.6),c:col||"#cfd5e1"}); }
+function popup(text,col){ popups.push({text,col:col||"#ffd76a",life:1.6}); }
+function firework(){
+  for(let n=0;n<3;n++){ const cx=rnd(W*.3,W*.9), cy=rnd(60,160), col=pick(["#ff6a3d","#ffd76a","#9ad1ff","#c38bff","#7dffb0"]);
+    setTimeout(()=>{ sBoom(); for(let i=0;i<40;i++){const a=i/40*Math.PI*2, v=rnd(80,180); fx.push({x:cx,y:cy,vx:Math.cos(a)*v,vy:Math.sin(a)*v,life:rnd(.8,1.3),c:col});} },n*250); }
+}
 
 function die(why){
   if(player.dead) return; window.__why=why;
@@ -175,6 +214,8 @@ function gameOver(){
 
 function update(dt){
   t+=dt;
+  for(const q of fx){ q.x+=q.vx*dt; q.y+=q.vy*dt; q.vy+=90*dt; q.life-=dt; } fx=fx.filter(q=>q.life>0);
+  for(const q of popups) q.life-=dt; popups=popups.filter(q=>q.life>0);
   if(state!=="play") return;
   const p=player;
   if(!p.dead){ speed=Math.min(650,speed+9*dt); }
@@ -182,87 +223,161 @@ function update(dt){
   camX+=dx; dist+=dx; p.run+=dx;
   // физика
   const prevBottom=p.y;
-  p.vy+=G*dt*(p.vy>0?1.15:1); p.y+=p.vy*dt;
+  const wingFall=(power.type==="wings"&&t<power.until&&p.vy>0)?.75:1;
+  p.vy+=G*dt*(p.vy>0?1.15*wingFall:1); p.y+=p.vy*dt;
+  if(p.vy>=0) p.sprung=false;
   p.coyote=Math.max(0,p.coyote-dt); p.buf=Math.max(0,p.buf-dt);
   const wx=camX+p.x, halfW=11;
   let on=null;
   for(const r of roofs){
+    const sy=surfaceY(r);
     if(wx+halfW>r.x && wx-halfW<r.x+r.w){
-      if(prevBottom<=r.y+2 && p.y>=r.y && p.vy>=0){ on=r; }
-      else if(p.y>r.y+6 && wx+halfW>r.x && wx-halfW<r.x+8 && prevBottom>r.y+6 && !p.dead){ die("wall"); } // врезался в стену
+      const tol=r.plat?r.amp*r.spd*dt+4:2;
+      if(prevBottom<=sy+tol && p.y>=sy-(r.plat?tol:0) && p.vy>=0){ on=r; }
+      else if(!r.plat && p.y>sy+6 && wx+halfW>r.x && wx-halfW<r.x+8 && prevBottom>sy+6 && !p.dead){ die("wall"); }
     }
   }
   const wasGround=p.ground;
-  if(on && !p.dead){ p.y=on.y; p.vy=0; p.ground=true; p.jumps=0; if(!wasGround) puff(p.x,p.y,4); if(p.buf>0){p.buf=0; jumpPress();} }
-  else { if(wasGround) p.coyote=.09; p.ground=false; }
-  // антенны
-  if(!p.dead) for(const r of roofs) for(const a of r.ant){
-    const ax=r.x+a.x;
-    if(wx+halfW-5>ax && wx-halfW+5<ax+a.w && p.y>r.y-a.h+6 && p.y-30<r.y) die("antenna");
+  if(on && !p.dead){
+    p.y=surfaceY(on); p.vy=0; p.ground=true; p.jumps=0; p.on=on;
+    if(!wasGround) puff(p.x,p.y,4);
+    if(on.spring!==undefined && Math.abs(on.x+on.spring-wx)<22){ p.vy=SPRING; p.ground=false; p.jumps=1; p.sprung=true; on.boing=.3; sSpring(); puff(p.x,p.y,10,"#7dffb0"); }
+    else if(p.buf>0){p.buf=0; jumpPress();}
+  } else { if(wasGround) p.coyote=.09; p.ground=false; p.on=null; }
+  // предметы
+  const magnet=power.type==="magnet"&&t<power.until;
+  for(const it of items){
+    if(it.got) continue;
+    if(it.plat) it.y=surfaceY(it.plat)-45;
+    if(magnet && it.kind==="star"){ const ddx=wx-it.x, ddy=(p.y-16)-it.y, d=Math.hypot(ddx,ddy); if(d<200){ it.x+=ddx/d*500*dt; it.y+=ddy/d*500*dt; it.plat=null; } }
+    if(Math.abs(it.x-wx)<20 && Math.abs(it.y-(p.y-16))<26){
+      it.got=true;
+      if(it.kind==="star"){ const v=(power.type==="x2"&&t<power.until)?2:1; starCount+=v; sStar(); puff(p.x,it.y,6,"#ffd76a"); }
+      else { power={type:it.kind,until:t+POWER[it.kind].dur}; sPower(); popup(POWER[it.kind].icon+" "+POWER[it.kind].name+"!","#9ad1ff"); puff(p.x,it.y,14,"#9ad1ff"); }
+    }
   }
-  // звёзды
-  for(const it of items) if(!it.got && Math.abs(it.x-wx)<20 && Math.abs(it.y-(p.y-16))<26){ it.got=true; starCount++; sStar(); puff(p.x,it.y,6,"#ffd76a"); }
+  // голуби
+  for(const b of birds){
+    if(!b.fly && Math.abs(b.x-wx)<90){ b.fly=true; b.vx=rnd(40,120); b.vy=rnd(-160,-90); if(Math.random()<.4) beep(1200,1600,.05,"triangle",.03); }
+    if(b.fly){ b.x+=b.vx*dt; b.y+=b.vy*dt; b.vy-=20*dt; }
+    b.flap+=dt*(b.fly?20:2);
+  }
   // упал
   if(p.y>H+80 && !p.dead){ die("fall"); }
-  // генерация
+  // отметки
+  const m=Math.floor(dist/10);
+  if(m>=nextMilestone){ popup(nextMilestone+" м! 🎆"); firework(); nextMilestone+=500; }
+  // генерация и уборка
   while(lastRoofEnd()<camX+W+600) addRoof();
   roofs=roofs.filter(r=>r.x+r.w>camX-100); items=items.filter(i=>i.x>camX-50 && !(i.got&&i.x<camX));
+  birds=birds.filter(b=>b.x>camX-50 && b.y>-100);
+  for(const r of roofs) if(r.boing) r.boing=Math.max(0,r.boing-dt);
   for(const q of parts){ q.x+=q.vx*dt-dx; q.y+=q.vy*dt; q.vy+=600*dt; q.life-=dt; }
   parts=parts.filter(q=>q.life>0);
   shake=Math.max(0,shake-dt);
-  $("dist").textContent=Math.floor(dist/10); $("stars").textContent=starCount;
+  $("dist").textContent=m; $("stars").textContent=starCount;
+  const left=power.type&&t<power.until?Math.ceil(power.until-t):0;
+  $("pw").textContent=left?POWER[power.type].icon+" "+left+"с":"";
 }
 
 // ---------- Отрисовка ----------
-function winColor(seed,i,j){ const v=Math.sin(seed*13.1+i*7.7+j*3.3)*43758.5; const f=v-Math.floor(v); return f<.35?"#ffd27a":f<.42?"#9ad1ff":null; }
+function hash(seed,i,j){ const v=Math.sin(seed*13.1+i*7.7+j*3.3)*43758.5; return v-Math.floor(v); }
+function winColor(seed,i,j,day){ const f=hash(seed,i,j); if(day>.6) return f<.15?"#cfe6ff":null; return f<.35?"#ffd27a":f<.42?"#9ad1ff":null; }
 function draw(){
   ctx.setTransform(dpr*scale,0,0,dpr*scale,0,dpr*scale*offY);
   if(shake>0) ctx.translate(rnd(-4,4)*shake*5,rnd(-4,4)*shake*5);
-  // небо
-  const g=ctx.createLinearGradient(0,0,0,H); g.addColorStop(0,"#0b0e1a"); g.addColorStop(.6,"#1b1838"); g.addColorStop(1,"#3a1f2e");
-  ctx.fillStyle="#0b0e1a"; ctx.fillRect(-20,-offY-20,W+40,offY+40); ctx.fillStyle=g; ctx.fillRect(-20,-20,W+40,H+40);
-  for(const s of stars){ ctx.globalAlpha=.4+.6*Math.abs(Math.sin(t*1.5+s.t)); ctx.fillStyle="#fff"; ctx.fillRect(s.x*W,s.y*(H+offY)-offY,s.r,s.r); }
+  const meters=state==="menu"?0:dist/10, sky=skyAt(meters), day=1-sky.star;
+  const g=ctx.createLinearGradient(0,0,0,H); g.addColorStop(0,sky.top); g.addColorStop(.6,sky.mid); g.addColorStop(1,sky.bot);
+  ctx.fillStyle=sky.top; ctx.fillRect(-20,-offY-20,W+40,offY+40); ctx.fillStyle=g; ctx.fillRect(-20,-20,W+40,H+40);
+  if(sky.star>0.02) for(const s of stars){ ctx.globalAlpha=sky.star*(.4+.6*Math.abs(Math.sin(t*1.5+s.t))); ctx.fillStyle="#fff"; ctx.fillRect(s.x*W,s.y*(H+offY)-offY,s.r,s.r); }
   ctx.globalAlpha=1;
-  // луна
-  ctx.fillStyle="#fff3d6"; ctx.beginPath(); ctx.arc(W*.8,70,26,0,7); ctx.fill();
-  ctx.fillStyle="#1b1838"; ctx.beginPath(); ctx.arc(W*.8+10,64,22,0,7); ctx.fill();
-  const cam=state==="play"||state==="over"||state==="paused"?camX:t*60;
-  // дальний план (+ шпиль собора)
-  ctx.fillStyle="#191a33";
+  // луна / солнце
+  ctx.fillStyle=sky.moon; ctx.beginPath(); ctx.arc(W*.8,70,26,0,7); ctx.fill();
+  if(sky.star>.5){ ctx.fillStyle=sky.mid; ctx.beginPath(); ctx.arc(W*.8+10,64,22,0,7); ctx.fill(); }
+  const cam=state==="menu"?t*60:camX;
+  // дальний план со шпилями
+  ctx.fillStyle=sky.far;
   const fo=(cam*.15)%(W+200);
-  for(const b of far){ let x=b.x-fo; if(x+b.w<-200) x+=W*2+200; ctx.fillRect(x,H-b.h,b.w,b.h); }
-  // средний план с окнами
+  for(const b of far){ let x=b.x-fo; if(x+b.w<-200) x+=W*2+200; ctx.fillRect(x,H-b.h,b.w,b.h);
+    if(b.spire){ ctx.beginPath(); ctx.moveTo(x+b.w/2-10,H-b.h); ctx.lineTo(x+b.w/2,H-b.h-60); ctx.lineTo(x+b.w/2+10,H-b.h); ctx.fill(); } }
+  // средний план
   const mo=(cam*.4)%(W+300);
   for(const b of mid){
     let x=b.x-mo; if(x+b.w<-300) x+=W*2+200; if(x>W) continue;
-    ctx.fillStyle="#22223f"; ctx.fillRect(x,H-b.h,b.w,b.h);
-    for(let i=0;i<b.w/14-1;i++) for(let j=0;j<b.h/18-1;j++){ const c=winColor(b.seed,i,j); if(c){ctx.fillStyle=c; ctx.globalAlpha=.55; ctx.fillRect(x+6+i*14,H-b.h+8+j*18,6,8);} }
+    ctx.fillStyle=sky.midB; ctx.fillRect(x,H-b.h,b.w,b.h);
+    ctx.globalAlpha=.55;
+    for(let i=0;i<b.w/14-1;i++) for(let j=0;j<b.h/18-1;j++){ const c=winColor(b.seed,i,j,day); if(c){ctx.fillStyle=c; ctx.fillRect(x+6+i*14,H-b.h+8+j*18,6,8);} }
     ctx.globalAlpha=1;
   }
-  if(state==="menu"){ drawMenuRoof(); return; }
-  // крыши
-  for(const r of roofs){
-    const x=r.x-camX; if(x>W+20||x+r.w<-20) continue;
-    const body=["#2d2f4a","#33304a","#2a3446"][r.style];
-    ctx.fillStyle=body; ctx.fillRect(x,r.y,r.w,H-r.y+20);
-    // окна
-    for(let i=0;i<(r.w-20)/22;i++) for(let j=0;j<(H-r.y)/26;j++){ const c=winColor(r.x|0,i,j); if(c){ctx.fillStyle=c; ctx.fillRect(x+12+i*22,r.y+20+j*26,9,12);} }
-    // парапет
-    ctx.fillStyle="#4b4f72"; ctx.fillRect(x-3,r.y-6,r.w+6,8);
-    ctx.fillStyle="#6a6f99"; ctx.fillRect(x-3,r.y-6,r.w+6,2);
-    // антенны
-    for(const a of r.ant){
-      const ax=x+a.x;
-      if(a.kind===0){ ctx.fillStyle="#8a90b5"; ctx.fillRect(ax+a.w/2-2,r.y-a.h-6,4,a.h); ctx.fillRect(ax,r.y-a.h-6,a.w,3); ctx.fillRect(ax+3,r.y-a.h+4,a.w-6,3);
-        ctx.fillStyle=(t*2%1<.5)?"#ff4040":"#7a2020"; ctx.fillRect(ax+a.w/2-2,r.y-a.h-10,4,4); }
-      else { ctx.fillStyle="#5d6386"; ctx.fillRect(ax,r.y-a.h-6,a.w,a.h); ctx.fillStyle="#7d84ad"; ctx.fillRect(ax-2,r.y-a.h-8,a.w+4,4); }
-    }
+  if(state==="menu"){ drawMenuRoof(); drawFx(); return; }
+  for(const r of roofs){ const x=r.x-camX; if(x>W+20||x+r.w<-20) continue; drawRoof(r,x,day); }
+  // голуби
+  for(const b of birds){ const x=b.x-camX; if(x<-20||x>W+20) continue; drawBird(x,b.y,b.fly,b.flap); }
+  // предметы
+  for(const it of items){ if(it.got) continue; const x=it.x-camX; if(x<-20||x>W+20) continue;
+    const y=it.y+Math.sin(t*4+it.x)*3;
+    if(it.kind==="star") drawStar(x,y,8);
+    else { ctx.fillStyle="rgba(154,209,255,.25)"; ctx.beginPath(); ctx.arc(x,y,15+Math.sin(t*6)*2,0,7); ctx.fill();
+      ctx.font="18px system-ui"; ctx.textAlign="center"; ctx.textBaseline="middle"; ctx.fillText(it.kind==="magnet"?"🧲":it.kind==="wings"?"🪽":"⭐", x, y+1);
+      if(it.kind==="x2"){ ctx.font="bold 10px system-ui"; ctx.fillStyle="#fff"; ctx.fillText("×2",x+11,y+10); } }
   }
-  // звёзды-предметы
-  for(const it of items){ if(it.got) continue; const x=it.x-camX; if(x<-20||x>W+20) continue; drawStar(x,it.y+Math.sin(t*4+it.x)*3,8); }
-  // частицы
   for(const q of parts){ ctx.globalAlpha=Math.max(0,q.life*2); ctx.fillStyle=q.c; ctx.fillRect(q.x,q.y,3,3); } ctx.globalAlpha=1;
-  if(!player.dead) drawRunner(player.x,player.y,player.ground,player.run,player.vy);
+  if(!player.dead){
+    if(power.type&&t<power.until){ ctx.strokeStyle="rgba(154,209,255,"+(.35+.2*Math.sin(t*10))+")"; ctx.lineWidth=2; ctx.beginPath(); ctx.arc(player.x,player.y-20,24,0,7); ctx.stroke(); }
+    drawRunner(player.x,player.y,player.ground,player.run,player.vy);
+  }
+  drawFx();
+  // всплывающие надписи
+  for(const q of popups){ ctx.globalAlpha=Math.min(1,q.life); ctx.font="bold 26px system-ui"; ctx.textAlign="center"; ctx.textBaseline="middle";
+    ctx.fillStyle="rgba(0,0,0,.5)"; ctx.fillText(q.text,W/2+2,120-(1.6-q.life)*25+2); ctx.fillStyle=q.col; ctx.fillText(q.text,W/2,120-(1.6-q.life)*25); }
+  ctx.globalAlpha=1;
+}
+function drawFx(){ for(const q of fx){ ctx.globalAlpha=Math.max(0,q.life); ctx.fillStyle=q.c; ctx.fillRect(q.x,q.y,3,3); } ctx.globalAlpha=1; }
+function drawRoof(r,x,day){
+  const sy=surfaceY(r);
+  if(r.plat){ // подвешенный груз крана
+    ctx.strokeStyle="#8a90b5"; ctx.lineWidth=2; ctx.beginPath(); ctx.moveTo(x+r.w/2,-offY); ctx.lineTo(x+r.w/2,sy-18); ctx.moveTo(x+r.w/2,sy-18); ctx.lineTo(x+6,sy); ctx.moveTo(x+r.w/2,sy-18); ctx.lineTo(x+r.w-6,sy); ctx.stroke();
+    ctx.fillStyle="#e0a030"; ctx.fillRect(x,sy,r.w,12);
+    ctx.fillStyle="#2a2a2a"; for(let i=0;i<r.w;i+=16) ctx.fillRect(x+i,sy+2,8,8);
+    return;
+  }
+  const H2=H-sy+20;
+  if(r.style==="panel"){ ctx.fillStyle="#2d2f4a"; ctx.fillRect(x,sy,r.w,H2);
+    ctx.fillStyle="#262842"; for(let j=0;j<H2;j+=26) ctx.fillRect(x,sy+j+22,r.w,2);
+    winGrid(r,x,sy,22,26,9,12,day); }
+  else if(r.style==="brick"){ ctx.fillStyle="#5a2f2a"; ctx.fillRect(x,sy,r.w,H2);
+    ctx.fillStyle="#4a2622"; for(let j=0;j<H2;j+=8) for(let i=(j/8%2)*10;i<r.w;i+=20) ctx.fillRect(x+i,sy+j,1,8);
+    for(let j=0;j<H2;j+=8) ctx.fillRect(x,sy+j,r.w,1);
+    winGrid(r,x,sy,30,34,12,18,day,"#3a1c18"); }
+  else if(r.style==="glass"){ ctx.fillStyle=day>.6?"#5f86b8":"#1f3555"; ctx.fillRect(x,sy,r.w,H2);
+    ctx.fillStyle=day>.6?"rgba(255,255,255,.25)":"rgba(120,180,255,.18)"; for(let i=0;i<r.w;i+=18) ctx.fillRect(x+i,sy,1,H2); for(let j=0;j<H2;j+=14) ctx.fillRect(x,sy+j,r.w,1);
+    ctx.fillStyle="rgba(255,255,255,.12)"; ctx.beginPath(); ctx.moveTo(x+r.w*.2,sy); ctx.lineTo(x+r.w*.35,sy); ctx.lineTo(x+r.w*.15,sy+H2); ctx.lineTo(x,sy+H2); ctx.fill(); }
+  else if(r.style==="old"){ ctx.fillStyle="#d8c8a8"; ctx.fillRect(x,sy,r.w,H2); if(day<.6){ctx.fillStyle="rgba(10,10,40,.55)"; ctx.fillRect(x,sy,r.w,H2);}
+    ctx.fillStyle="#a83a2a"; ctx.fillRect(x-4,sy-2,r.w+8,6);
+    for(let i=0;i<(r.w-20)/30;i++) for(let j=0;j<(H-sy)/40;j++){ const c=winColor(r.seed,i,j,day)||"#3a3a50"; ctx.fillStyle="#6b5a40"; ctx.fillRect(x+14+i*30,sy+20+j*40,14,22); ctx.fillStyle=c; ctx.fillRect(x+16+i*30,sy+22+j*40,10,18); } }
+  else { ctx.fillStyle="#24203a"; ctx.fillRect(x,sy,r.w,H2); winGrid(r,x,sy,22,26,9,12,day);
+    if(!r.sign){ r.sign=pick(["КАФЕ","ЯНТАРЬ","24 ЧАСА","КЁНИГ","ОТЕЛЬ","МАРКЕТ"]); r.sc=pick(["#ff4fa0","#4fe0ff","#ffd24f","#7dff7a"]); }
+    const blink=hash(r.seed,Math.floor(t*3),0)>.08; ctx.font="bold 14px system-ui"; ctx.textAlign="center"; ctx.textBaseline="middle";
+    const tw=Math.min(r.w-20,ctx.measureText(r.sign).width+16);
+    ctx.fillStyle="#120f20"; ctx.fillRect(x+r.w/2-tw/2,sy+14,tw,22);
+    if(blink){ ctx.shadowColor=r.sc; ctx.shadowBlur=12; } ctx.fillStyle=blink?r.sc:"#444"; ctx.fillText(r.sign,x+r.w/2,sy+26); ctx.shadowBlur=0; }
+  // парапет
+  ctx.fillStyle=r.style==="old"?"#7a2a20":"#4b4f72"; ctx.fillRect(x-3,sy-6,r.w+6,8);
+  ctx.fillStyle=r.style==="old"?"#b04a38":"#6a6f99"; ctx.fillRect(x-3,sy-6,r.w+6,2);
+  // батут
+  if(r.spring!==undefined){ const sx=x+r.spring, sq=r.boing?6:0;
+    ctx.fillStyle="#2a2a2a"; ctx.fillRect(sx-18,sy-10+sq,3,10-sq); ctx.fillRect(sx+15,sy-10+sq,3,10-sq);
+    ctx.fillStyle="#7dff7a"; ctx.fillRect(sx-20,sy-12+sq,40,4); ctx.fillStyle="rgba(125,255,122,.3)"; ctx.fillRect(sx-20,sy-16+sq,40,4); }
+}
+function winGrid(r,x,sy,dx,dy,ww,wh,day,frame){
+  for(let i=0;i<(r.w-20)/dx;i++) for(let j=0;j<(H-sy)/dy;j++){ const c=winColor(r.seed,i,j,day);
+    if(frame){ctx.fillStyle=frame; ctx.fillRect(x+10+i*dx,sy+18+j*dy,ww+4,wh+4);}
+    if(c){ctx.fillStyle=c; ctx.fillRect(x+12+i*dx,sy+20+j*dy,ww,wh);} }
+}
+function drawBird(x,y,fly,flap){
+  ctx.fillStyle="#9aa0b8"; ctx.beginPath(); ctx.ellipse(x,y-4,6,4,0,0,7); ctx.fill();
+  ctx.beginPath(); ctx.arc(x+5,y-8,3,0,7); ctx.fill(); ctx.fillStyle="#ffb03d"; ctx.fillRect(x+7,y-8,3,1.5);
+  if(fly){ const w=Math.sin(flap)*7; ctx.strokeStyle="#9aa0b8"; ctx.lineWidth=2; ctx.beginPath(); ctx.moveTo(x-2,y-5); ctx.lineTo(x-8,y-5-w); ctx.moveTo(x+1,y-5); ctx.lineTo(x+6,y-5-w); ctx.stroke(); }
 }
 function drawStar(x,y,r){
   ctx.fillStyle="#ffd76a"; ctx.beginPath();
@@ -272,18 +387,17 @@ function drawStar(x,y,r){
 function drawRunner(x,y,ground,run,vy){
   const ph=run/22, leg=ground?Math.sin(ph)*9:(vy<0?-6:5), arm=ground?Math.cos(ph)*8:-8;
   ctx.lineCap="round"; ctx.lineWidth=4;
-  // ноги
   ctx.strokeStyle="#1d2233"; ctx.beginPath(); ctx.moveTo(x,y-14); ctx.lineTo(x+leg,y); ctx.moveTo(x,y-14); ctx.lineTo(x-leg,y); ctx.stroke();
-  // тело (худи)
   ctx.fillStyle="#ff6a3d"; ctx.fillRect(x-6,y-30,12,17);
-  // руки
   ctx.strokeStyle="#ff8a5d"; ctx.beginPath(); ctx.moveTo(x,y-26); ctx.lineTo(x+arm,y-17); ctx.moveTo(x,y-26); ctx.lineTo(x-arm,y-17); ctx.stroke();
-  // голова + капюшон
   ctx.fillStyle="#f1c9a5"; ctx.beginPath(); ctx.arc(x+1,y-36,6,0,7); ctx.fill();
   ctx.fillStyle="#e2552c"; ctx.beginPath(); ctx.arc(x-1,y-37,6.5,Math.PI*.9,Math.PI*1.9); ctx.fill();
+  if(power.type==="wings"&&t<power.until){ const w=Math.sin(t*18)*6; ctx.fillStyle="rgba(230,240,255,.85)";
+    ctx.beginPath(); ctx.moveTo(x-4,y-26); ctx.lineTo(x-18,y-34-w); ctx.lineTo(x-14,y-22); ctx.fill(); }
 }
 function drawMenuRoof(){
   ctx.fillStyle="#2d2f4a"; ctx.fillRect(0,320,W,100); ctx.fillStyle="#4b4f72"; ctx.fillRect(0,314,W,8);
+  if(!power) power={type:null,until:0};
   drawRunner(W/2,314,true,t*180,0);
 }
 
