@@ -143,6 +143,23 @@
 </div>
 
 <script>
+// Показывает любую ошибку прямо на странице (написано по-старому, чтобы работало везде)
+window.__started=false;
+window.onerror=function(msg,src,line){
+  try{
+    var s=document.getElementById("slot"), b=document.getElementById("spin");
+    if(b) b.textContent="Ошибка";
+    if(s) s.innerHTML='<span style="color:#ff8a7a;font-size:14px;font-family:system-ui,sans-serif">Ошибка на странице: '+String(msg).replace(/</g,"&lt;")+' (строка '+line+').<br>Пришли этот текст и название браузера.</span>';
+  }catch(e){}
+};
+setTimeout(function(){
+  if(window.__started) return;
+  var s=document.getElementById("slot"), b=document.getElementById("spin");
+  if(b) b.textContent="Не запустилось";
+  if(s) s.innerHTML='<span style="color:#ff8a7a;font-size:14px;font-family:system-ui,sans-serif">Скрипт сайта не запустился — скорее всего, браузер слишком старый или это встроенный браузер (Telegram/VK). Открой сайт в Chrome или Safari и обнови до последней версии.</span>';
+},8000);
+</script>
+<script>
 // ====== НАСТРОЙКА КОММЕНТАРИЕВ (Supabase) ======
 const SUPABASE_URL = "https://hmkecihzribgeguzcwkt.supabase.co";
 const SUPABASE_KEY = "sb_publishable_9HipXlYi7d-mQbgXMVmr-w_v_n38Dkz";
@@ -162,7 +179,7 @@ const FALLBACK = [
   {street:"улица Гайдара", num:"94", lv:25, name:"ЖК «Огни Калининграда»"},
   {street:"улица Генерала Челнокова", num:"27", lv:17, name:"ЖК «Высота 56»"},
   {street:"улица Фрунзе", num:"75", lv:13, name:""}
-].map((b,i)=>({...b,id:"fb/"+i,fallback:true}));
+].map(function(b,i){ return Object.assign({},b,{id:"fb/"+i,fallback:true}); });
 const CACHE_KEY = "kgd_highrises_v2";
 let all = [], pool = [], map, marker, lastId = null;
 
@@ -186,9 +203,16 @@ function parseOverpass(j){
             year:t["building:start_date"]||t.start_date||"", h:t.height||""};
   }).filter(Boolean);
 }
-async function fetchT(url,ms,opts){
-  const ctl=new AbortController(), tm=setTimeout(()=>ctl.abort(),ms);
-  try{ return await fetch(url,{...(opts||{}),signal:ctl.signal}); } finally{ clearTimeout(tm); }
+function fetchT(url,ms,opts){
+  // fetch с таймаутом, работает и в старых браузерах
+  return new Promise(function(resolve,reject){
+    var ctl = (typeof AbortController!=="undefined") ? new AbortController() : null;
+    var done=false;
+    var tm=setTimeout(function(){ if(done) return; done=true; if(ctl) ctl.abort(); var e=new Error("таймаут"); e.name="AbortError"; reject(e); },ms);
+    var o=Object.assign({},opts||{}); if(ctl) o.signal=ctl.signal;
+    fetch(url,o).then(function(r){ if(done) return; done=true; clearTimeout(tm); resolve(r); },
+                      function(e){ if(done) return; done=true; clearTimeout(tm); reject(e); });
+  });
 }
 async function loadBuildings(){
   try{
@@ -297,7 +321,7 @@ function show(b){
     <a href="${ym}" target="_blank" rel="noopener">🗺 Яндекс Карты</a>
     <a href="https://www.openstreetmap.org/${b.id}" target="_blank" rel="noopener">OSM</a>
     <button id="copy">📋 Копировать адрес</button>`;
-  $("copy").onclick=()=>{navigator.clipboard?.writeText(`Калининград, ${label(b)}`).then(()=>$("copy").textContent="✅ Скопировано").catch(()=>{})};
+  $("copy").onclick=()=>{ if(navigator.clipboard) navigator.clipboard.writeText(`Калининград, ${label(b)}`).then(()=>$("copy").textContent="✅ Скопировано").catch(()=>{}); };
   drawMap(b);
   loadPhotos(b);
 }
@@ -313,24 +337,3 @@ function drawMap(b){
 }
 
 function dist(a,b,c,d){const R=6371e3,r=Math.PI/180,x=(d-b)*r*Math.cos((a+c)/2*r),y=(c-a)*r;return Math.sqrt(x*x+y*y)*R}
-
-async function loadPhotos(b){
-  const ph=$("photo"), th=$("thumbs");
-  ph.innerHTML=`<div class="ph">Ищу фото…</div>`; th.style.display="none"; th.innerHTML="";
-  const token = b.id;
-  try{
-    const url=`https://commons.wikimedia.org/w/api.php?action=query&format=json&origin=*`+
-      `&generator=geosearch&ggscoord=${b.lat}|${b.lon}&ggsradius=180&ggslimit=20&ggsnamespace=6`+
-      `&prop=imageinfo|coordinates&iiprop=url|extmetadata|mime&iiurlwidth=1100`;
-    const j=await (await fetch(url)).json();
-    if(lastId!==token) return;
-    const pics=Object.values(j.query?.pages||{})
-      .filter(p=>p.imageinfo&&/jpeg|png|webp/.test(p.imageinfo[0].mime))
-      .map(p=>{const c=p.coordinates?.[0];return{...p.imageinfo[0],title:p.title,d:c?dist(b.lat,b.lon,c.lat,c.lon):999}})
-      .sort((x,y)=>x.d-y.d).slice(0,8);
-    if(!pics.length) throw 0;
-    const set=i=>{
-      const p=pics[i], m=p.extmetadata||{};
-      const author=strip(m.Artist?.value||"Wikimedia Commons"), lic=m.LicenseShortName?.value||"";
-      ph.innerHTML=`<img src="${p.thumburl}" alt="Фото рядом с домом">
-        <div class="credit">Фото в
