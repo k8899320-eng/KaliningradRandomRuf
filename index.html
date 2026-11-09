@@ -77,6 +77,11 @@
   .leaflet-control-attribution a{color:#c6cbd8!important}
   .leaflet-tooltip{background:#1f2430;color:#eef1f6;border:1px solid #2c3342}
   .leaflet-tooltip-top:before{border-top-color:#2c3342}
+  #banScreen{position:fixed;inset:0;z-index:100000;background:radial-gradient(600px 400px at 50% 30%,rgba(255,60,60,.18),transparent 70%),#0b0d12;display:flex;align-items:center;justify-content:center;padding:20px;text-align:center}
+  #banScreen .banbox{max-width:460px}
+  #banScreen h2{font-family:Unbounded,sans-serif;font-size:clamp(22px,5vw,30px);margin:10px 0 14px;color:#ff6a6a}
+  #banScreen .why{font-size:17px;color:#eef1f6;background:#161a22;border:1px solid #3a2a2a;border-radius:14px;padding:14px 16px}
+  #banScreen .small{color:#8b93a5;font-size:13px}
   #lightbox{position:fixed;inset:0;background:rgba(0,0,0,.88);display:none;align-items:center;justify-content:center;z-index:9500;cursor:zoom-out;padding:16px}
   #lightbox img{max-width:100%;max-height:100%;border-radius:12px}
   h1{font-family:Unbounded,sans-serif;font-weight:800;font-size:clamp(28px,6vw,52px);line-height:1;margin:0 0 8px;letter-spacing:-.02em}
@@ -239,7 +244,8 @@
     так что без разрешения могут оштрафовать. Если всё-таки идёшь — не в одиночку, не в дождь/гололёд/ветер и не к краю.
   </p>
   <p class="note" style="border-left-color:var(--accent2)">🎮 Хочешь побегать по крышам без риска? Играй в <a href="#" id="openGame2" style="color:var(--accent2)">«Руфер Калининград»</a>.</p>
-  <footer><span>🏢 Руф·рандомайзер Калининград · <span id="footVisits"></span></span><span>Данные: © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a>, фото: Wikimedia Commons и пользователи</span></footer>
+  <footer><span>🏢 Руф·рандомайзер Калининград · <span id="footVisits"></span></span><span>Данные: © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a>, фото: Wikimedia Commons и пользователи</span>
+  <span style="flex-basis:100%;font-size:12px;opacity:.7">Для подсчёта посетителей и защиты от нарушителей сайт сохраняет IP-адрес. Он не публикуется.</span></footer>
 </div>
 <div class="toast" id="toast"></div>
 <div id="lightbox"><img id="lbimg" alt=""></div>
@@ -641,9 +647,20 @@ async function countVisit(){
   try{
     const r=await fetchT(`${SUPA}/rest/v1/rpc/register_visit`,15000,{method:"POST",headers:sbHeaders(),body:"{}"});
     if(!r.ok) return;
-    visits=await r.json(); renderStats();
+    const data=await r.json();
+    visits=typeof data==="number"?data:data.count;
+    if(data&&data.banned) showBan(data.reason);
+    renderStats();
     const f=$("footVisits"); if(f) f.textContent="👥 "+Number(visits).toLocaleString("ru-RU")+" посетителей";
   }catch(e){}
+}
+function showBan(reason){
+  const d=document.createElement("div"); d.id="banScreen";
+  d.innerHTML=`<div class="banbox"><div style="font-size:54px">⛔</div><h2>Вы заблокированы создателем</h2>
+    <p class="why">Причина: <b>${esc(reason||"не указана")}</b></p>
+    <p class="small">Если считаешь, что это ошибка — напиши создателю сайта.</p></div>`;
+  document.body.appendChild(d); document.body.style.overflow="hidden";
+  try{ document.getElementById("gameLayer").remove(); }catch(e){}
 }
 function renderStats(){
   if(!all.length||all[0].fallback){ $("stats").innerHTML=visitChip(); return; }
