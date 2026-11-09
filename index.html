@@ -54,6 +54,23 @@
   #map{height:260px;border-top:1px solid var(--line)}
   .note{margin-top:26px;color:var(--muted);font-size:13px;line-height:1.55;border-left:3px solid var(--accent);padding-left:12px}
   .err{color:#ff8a7a}
+  .comments{border-top:1px solid var(--line);padding:18px 22px;display:grid;gap:12px}
+  .comments h3{margin:0;font-family:Unbounded,sans-serif;font-weight:500;font-size:18px}
+  .comments h3 small{color:var(--muted);font-family:Manrope,system-ui,sans-serif;font-size:13px;margin-left:6px}
+  .cform{display:grid;gap:8px}
+  .cform input,.cform textarea{width:100%;background:#0f1218;color:var(--text);border:1px solid var(--line);border-radius:10px;padding:10px 12px;font:inherit;font-size:16px}
+  .cform textarea{min-height:80px;resize:vertical}
+  .cform input:focus,.cform textarea:focus{outline:none;border-color:var(--accent)}
+  .crow{display:flex;gap:8px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+  .cform button{background:linear-gradient(135deg,var(--accent),var(--accent2));color:#1a0d06;border:0;border-radius:10px;padding:10px 18px;font:inherit;font-weight:600;cursor:pointer}
+  .cform button:disabled{opacity:.5;cursor:wait}
+  .cmsg{font-size:13px;color:var(--muted)}
+  .clist{display:grid;gap:10px}
+  .citem{background:#1b2029;border:1px solid var(--line);border-radius:12px;padding:10px 12px}
+  .citem .meta{font-size:12px;color:var(--muted);margin-bottom:4px}
+  .citem .meta b{color:var(--accent2);font-weight:600}
+  .citem .txt{white-space:pre-wrap;word-wrap:break-word;font-size:15px;line-height:1.45}
+  .hp{position:absolute;left:-9999px;width:1px;height:1px;opacity:0}
   html{-webkit-text-size-adjust:100%}
   button,a{-webkit-tap-highlight-color:transparent;touch-action:manipulation}
   @media (max-width:600px){
@@ -66,6 +83,7 @@
     .count{text-align:center}
     .slot{padding:16px;min-height:64px}
     .info{padding:16px}
+    .comments{padding:16px}
     .links{display:grid;grid-template-columns:1fr 1fr}
     .links a,.links button{text-align:center;padding:12px 8px}
     #map{height:220px}
@@ -104,6 +122,16 @@
       <div class="links" id="links"></div>
     </div>
     <div id="map"></div>
+    <div class="comments" id="comments">
+      <h3>💬 Комментарии <small id="ccount"></small></h3>
+      <form class="cform" id="cform" autocomplete="off">
+        <input id="cname" maxlength="30" placeholder="Ник (необязательно)">
+        <textarea id="ctext" maxlength="500" placeholder="Что скажешь про этот дом? Вид, подъезд, охрана…" required></textarea>
+        <input class="hp" id="cweb" tabindex="-1" aria-hidden="true" placeholder="website">
+        <div class="crow"><span class="cmsg" id="cmsg"></span><button id="csend" type="submit">Отправить</button></div>
+      </form>
+      <div class="clist" id="clist"></div>
+    </div>
   </div>
 
   <p class="note">
@@ -115,6 +143,10 @@
 </div>
 
 <script>
+// ====== НАСТРОЙКА КОММЕНТАРИЕВ (Supabase) ======
+const SUPABASE_URL = "https://hmkecihzribgeguzcwkt.supabase.co";
+const SUPABASE_KEY = "sb_publishable_9HipXlYi7d-mQbgXMVmr-w_v_n38Dkz";
+// ===============================================
 const BBOX = "54.640,20.340,54.790,20.640"; // Калининград
 const OVERPASS = [
   "https://overpass-api.de/api/interpreter",
@@ -154,9 +186,9 @@ function parseOverpass(j){
             year:t["building:start_date"]||t.start_date||"", h:t.height||""};
   }).filter(Boolean);
 }
-async function fetchT(url,ms){
+async function fetchT(url,ms,opts){
   const ctl=new AbortController(), tm=setTimeout(()=>ctl.abort(),ms);
-  try{ return await fetch(url,{signal:ctl.signal}); } finally{ clearTimeout(tm); }
+  try{ return await fetch(url,{...(opts||{}),signal:ctl.signal}); } finally{ clearTimeout(tm); }
 }
 async function loadBuildings(){
   try{
@@ -244,6 +276,7 @@ function show(b){
   if(b.year) tags.push(`<span class="tag">построен <b>${b.year}</b></span>`);
   if(b.name) tags.push(`<span class="tag">${esc(b.name)}</span>`);
   $("tags").innerHTML=tags.join("");
+  loadComments(b);
   if(b.fallback){
     const t=encodeURIComponent(`Калининград, ${label(b)}`);
     $("links").innerHTML=`
@@ -300,45 +333,4 @@ async function loadPhotos(b){
       const p=pics[i], m=p.extmetadata||{};
       const author=strip(m.Artist?.value||"Wikimedia Commons"), lic=m.LicenseShortName?.value||"";
       ph.innerHTML=`<img src="${p.thumburl}" alt="Фото рядом с домом">
-        <div class="credit">Фото в ~${Math.round(p.d)} м от дома · ${esc(author)} ${lic?"· "+esc(lic):""} ·
-        <a href="${p.descriptionurl}" target="_blank" rel="noopener">Commons</a></div>`;
-      [...th.children].forEach((t,k)=>t.classList.toggle("on",k===i));
-    };
-    if(pics.length>1){
-      th.innerHTML=pics.map(p=>`<img src="${p.thumburl}" alt="">`).join("");
-      [...th.children].forEach((t,i)=>t.onclick=()=>set(i));
-      th.style.display="flex";
-    }
-    set(0);
-  }catch(e){
-    if(lastId!==token) return;
-    ph.innerHTML=`<div class="ph">На Wikimedia Commons рядом с этим домом фото нет.<br><br>
-      <a style="color:var(--accent2)" target="_blank" rel="noopener"
-       href="https://yandex.ru/maps/?panorama%5Bpoint%5D=${b.lon},${b.lat}&l=stv,sta&ll=${b.lon},${b.lat}&z=17">Открыть панораму Яндекса →</a></div>`;
-  }
-}
-
-const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
-const strip=s=>{const d=document.createElement("div");d.innerHTML=s;return d.textContent.trim()};
-
-$("spin").onclick=spin;
-$("minLv").onchange=applyFilter;
-
-function start(){
-  $("spin").disabled=true; $("spin").textContent="Загрузка домов…";
-  loadBuildings().then(d=>{
-    all=d; $("spin").textContent="🎰 Крутить"; applyFilter();
-    $("slot").textContent="Нажми «Крутить» 🎰";
-  }).catch(e=>{
-    all=FALLBACK; $("spin").textContent="🎰 Крутить (запасной список)"; applyFilter();
-    $("slot").innerHTML=`<span class="err" style="font-size:14px;font-family:Manrope,system-ui,sans-serif;line-height:1.45">
-      OpenStreetMap не ответил, включён короткий запасной список.<br>
-      Если открываешь файл внутри чата — скачай его и открой в Chrome/Firefox: в превью чата интернет-запросы заблокированы.<br>
-      <small>${esc(e.message)}</small><br>
-      <button onclick="start()" style="margin-top:10px;background:#1f2430;color:#eef1f6;border:1px solid #262c38;border-radius:10px;padding:10px 14px;font:inherit;cursor:pointer">🔄 Попробовать ещё раз</button></span>`;
-  });
-}
-start();
-</script>
-</body>
-</html>
+        <div class="credit">Фото в
