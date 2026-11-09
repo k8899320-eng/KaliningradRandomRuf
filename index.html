@@ -387,6 +387,10 @@ function sbHeaders(extra){
   if(!SUPABASE_KEY.startsWith("sb_")) h.Authorization="Bearer "+SUPABASE_KEY;
   return h;
 }
+async function sbErr(r){
+  let t=""; try{ const j=await r.json(); t=j.message||j.msg||j.hint||JSON.stringify(j); }catch(e){}
+  return new Error("HTTP "+r.status+(t?" — "+t:""));
+}
 let currentHouse=null;
 try{ $("cname").value=localStorage.getItem("roof_nick")||""; }catch(e){}
 
@@ -413,7 +417,7 @@ async function loadComments(b){
   $("clist").innerHTML=`<div class="cmsg">Загружаю комментарии…</div>`;
   try{
     const r=await fetchT(`${SB}?house_id=eq.${encodeURIComponent(b.id)}&select=author,body,created_at&order=created_at.desc&limit=100`,15000,{headers:sbHeaders()});
-    if(!r.ok) throw new Error("HTTP "+r.status);
+    if(!r.ok) throw await sbErr(r);
     const list=await r.json();
     if(currentHouse===b.id) renderComments(list);
   }catch(e){
@@ -433,11 +437,11 @@ $("cform").addEventListener("submit",async ev=>{
   try{
     const r=await fetchT(SB,15000,{method:"POST",headers:sbHeaders({"Prefer":"return=minimal"}),
       body:JSON.stringify({house_id:house,author,body:body.slice(0,500)})});
-    if(!r.ok) throw new Error("HTTP "+r.status);
+    if(!r.ok) throw await sbErr(r);
     try{ localStorage.setItem("roof_nick",$("cname").value.trim()); localStorage.setItem("roof_last",Date.now()); }catch(e){}
     $("ctext").value=""; $("cmsg").textContent="✅ Отправлено";
     if(currentHouse===house) loadComments({id:house});
-  }catch(e){ $("cmsg").textContent="Не отправилось: "+(e.message||e); }
+  }catch(e){ $("cmsg").textContent="Не отправилось: "+(e.message==="Failed to fetch"?"нет связи с Supabase (Failed to fetch) — возможно, сайт Supabase заблокирован у твоего провайдера":(e.message||e)); }
   finally{ $("csend").disabled=false; }
 });
 
