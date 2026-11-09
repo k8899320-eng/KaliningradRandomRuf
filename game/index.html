@@ -31,6 +31,14 @@
   #pause{position:fixed;top:max(8px,env(safe-area-inset-top));left:50%;transform:translateX(-50%);background:rgba(31,36,48,.7);
          border:1px solid #2c3342;color:#eef1f6;border-radius:10px;width:40px;height:34px;font-size:16px;cursor:pointer}
   .hint{color:#8b93a5;font-size:13px}
+  #nick{background:#0f1218;color:#eef1f6;border:1px solid #2c3342;border-radius:12px;padding:10px 12px;font-size:16px;width:170px}
+  .lbList{width:min(420px,90vw);display:grid;gap:6px;max-height:55vh;overflow:auto}
+  .lbRow{display:grid;grid-template-columns:40px 1fr auto;gap:8px;align-items:center;background:#161a22;border:1px solid #262c38;border-radius:12px;padding:8px 12px;text-align:left}
+  .lbRow.top{background:linear-gradient(135deg,#3a2a12,#2a1f10);border-color:#ffb03d}
+  .lbRow.me{border-color:#9ad1ff}
+  .lbRow .r{font-weight:900;color:#8b93a5}.lbRow.top .r{color:#ffd76a}
+  .lbRow .n{font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .lbRow .m{font-weight:800;color:#ffb03d}
   .step{font-size:15px;color:#aab2c5;letter-spacing:.04em}.step b{color:#ffb03d}
   .lockbox{position:relative;width:min(420px,86vw);height:min(220px,38vh);background:linear-gradient(#5a5f78,#3b3f55);border-radius:18px;
     border:3px solid #8a90b5;box-shadow:inset 0 0 30px rgba(0,0,0,.5);padding:12px 18px 34px;box-sizing:border-box}
@@ -72,10 +80,11 @@
 
 <div class="ui" id="menu">
   <h1>РУФЕР<br><span>КАЛИНИНГРАД</span></h1>
-  <div class="sub">Беги по ночным крышам. Вскрой замок отмычкой, перекуси цепь болторезом — и беги по крышам от полицейского! Тап или пробел — прыжок. Звёзды и бонусы отбрасывают погоню назад. Один раз за забег можно зацепиться за край крыши — тапай, чтобы залезть. Добеги до 25 000 м и сбеги вниз по лестнице!</div>
+  <div class="sub">Беги по ночным крышам. Вскрой замок отмычкой, перекуси цепь болторезом — и беги по крышам от полицейского! Тап или пробел — прыжок. Звёзды и бонусы отбрасывают погоню назад. Один раз за забег можно зацепиться за край крыши — тапай, чтобы залезть. Добеги до 10 000 м и сбеги вниз по лестнице!</div>
   <div class="stat">Рекорд: <b id="best">0</b> м</div>
   <button class="big" id="play">▶ Играть</button>
   <div class="row">
+    <button class="small" id="lbBtn">🏆 Лидеры</button>
     <button class="small" id="sound">🔊 Звук: вкл</button>
     <button class="small" id="install" style="display:none">📲 Установить</button>
   </div>
@@ -86,8 +95,16 @@
   <h1 id="overTitle">Сорвался!</h1>
   <div class="stat">Пробежал: <b id="oDist">0</b> м · ⭐ <b id="oStars">0</b></div>
   <div class="stat">Очки: <b id="oScore">0</b> · Рекорд: <b id="oBest">0</b> м</div>
+  <div class="row"><input id="nick" maxlength="20" placeholder="Твой ник" autocomplete="off"><button class="small" id="sendScore">📤 В таблицу лидеров</button></div>
+  <div class="hint" id="sendMsg"></div>
   <button class="big" id="again">↻ Ещё раз</button>
-  <button class="small" id="toMenu">В меню</button>
+  <div class="row"><button class="small" id="lbBtn2">🏆 Лидеры</button><button class="small" id="toMenu">В меню</button></div>
+</div>
+
+<div class="ui hidden" id="lb">
+  <h1 style="font-size:min(40px,8vw,9vh)">🏆 Лидеры</h1>
+  <div class="lbList" id="lbList">Загружаю…</div>
+  <button class="small" id="lbClose">← Назад</button>
 </div>
 
 <div class="ui hidden" id="lock">
@@ -183,7 +200,7 @@ function skyAt(m){ // m — метры
 // ---------- Игра ----------
 const G=2300, JUMP=-760, DJUMP=-640, SPRING=-1150, PX=110;
 const STYLES=["panel","brick","glass","old","neon"];
-const FINISH_M=25000;
+const FINISH_M=10000;
 let usedGrab=false, hang=null, finalRoof=null, guard=null, hatch=null, fin=null, finT=0, hasSpray=false;
 let chase=75, cop=null, state="menu", t=0, speed, dist, starCount, roofs, items, parts, birds, fx=[], popups=[], player, camX, shake, lastTs=0, power={type:null,until:0}, nextMilestone;
 
@@ -290,15 +307,55 @@ function win(){
   window.__why="win";
   $("overTitle").textContent="Вы сбежали! 🎉";
   $("oDist").textContent=m; $("oStars").textContent=starCount; $("oScore").textContent=score; $("oBest").textContent=best;
-  firework(); show("over");
+  prepOver(m); firework(); show("over");
 }
+// ---------- Таблица лидеров (Supabase) ----------
+const SB_URL="https://hmkecihzribgeguzcwkt.supabase.co/rest/v1/comments", SB_KEY="sb_publishable_9HipXlYi7d-mQbgXMVmr-w_v_n38Dkz";
+const LB_ID="game:leaderboard", MAX_VALID=FINISH_M+300;
+const PINNED=[{n:"Креатор",m:25100,pinned:true}];
+let lbFrom="menu", lastRunM=0, sentThisRun=false;
+function lbHeaders(x){ return Object.assign({"apikey":SB_KEY,"Content-Type":"application/json"},x||{}); }
+async function loadLB(){
+  $("lbList").innerHTML='<div class="hint">Загружаю…</div>';
+  let rows=[];
+  try{
+    const r=await fetch(SB_URL+"?house_id=eq."+encodeURIComponent(LB_ID)+"&select=author,body&order=created_at.desc&limit=1000",{headers:lbHeaders()});
+    if(r.ok) rows=await r.json();
+  }catch(e){}
+  const best={};
+  for(const x of rows){ const m=parseInt(x.body,10), n=String(x.author||"").trim().slice(0,20);
+    if(!n||!(m>0)||m>MAX_VALID) continue;
+    if(PINNED.some(p=>p.n.toLowerCase()===n.toLowerCase())) continue;
+    const k=n.toLowerCase(); if(!best[k]||best[k].m<m) best[k]={n,m}; }
+  const list=PINNED.concat(Object.values(best).sort((a,b)=>b.m-a.m)).slice(0,20);
+  const me=(store.get("roofer_nick","")||"").toLowerCase();
+  $("lbList").innerHTML=list.map((x,i)=>`<div class="lbRow${i===0?" top":""}${x.n.toLowerCase()===me?" me":""}"><span class="r">${i===0?"👑":"#"+(i+1)}</span><span class="n">${escH(x.n)}</span><span class="m">${x.m.toLocaleString("ru-RU")} м</span></div>`).join("")
+    +(rows.length?"":'<div class="hint">Пока больше никого нет — будь следующим!</div>');
+}
+function escH(s){ return String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c])); }
+function openLB(from){ lbFrom=from; show("lb"); loadLB(); }
+async function sendScore(){
+  const n=$("nick").value.trim().slice(0,20);
+  if(!n){ $("sendMsg").textContent="Напиши ник"; return; }
+  if(PINNED.some(p=>p.n.toLowerCase()===n.toLowerCase())){ $("sendMsg").textContent="Этот ник занят 👑"; return; }
+  if(sentThisRun){ $("sendMsg").textContent="Этот забег уже в таблице"; return; }
+  if(lastRunM<10){ $("sendMsg").textContent="Пробеги хотя бы 10 м"; return; }
+  store.set("roofer_nick",n); $("sendScore").disabled=true; $("sendMsg").textContent="Отправляю…";
+  try{
+    const r=await fetch(SB_URL,{method:"POST",headers:lbHeaders({"Prefer":"return=minimal"}),body:JSON.stringify({house_id:LB_ID,author:n,body:String(Math.min(lastRunM,MAX_VALID))})});
+    if(!r.ok) throw new Error("HTTP "+r.status);
+    sentThisRun=true; $("sendMsg").textContent="✅ Результат в таблице!";
+  }catch(e){ $("sendMsg").textContent="Не отправилось: "+e.message; }
+  $("sendScore").disabled=false;
+}
+function prepOver(m){ lastRunM=m; sentThisRun=false; $("sendMsg").textContent=""; $("nick").value=store.get("roofer_nick",""); }
 function gameOver(){
   state="over";
   const m=Math.floor(dist/10), score=m+starCount*25, rec=m>best;
   if(rec){best=m; store.set("roofer_best",best);}
   $("overTitle").textContent=window.__why==="caught"?(rec?"Поймали, но рекорд! 🏆":"Поймали! 👮"):(rec?"Новый рекорд! 🏆":"Сорвался!");
   $("oDist").textContent=m; $("oStars").textContent=starCount; $("oScore").textContent=score; $("oBest").textContent=best;
-  show("over");
+  prepOver(m); show("over");
 }
 
 function update(dt){
@@ -594,7 +651,7 @@ function loop(ts){
 
 // ---------- Интерфейс ----------
 function $(id){return document.getElementById(id)}
-function show(id){ for(const k of ["menu","over","paused","lock","cut"]) $(k).classList.toggle("hidden",k!==id); const g=(id===null||id==="paused"||id==="over"); $("hud").style.display=$("hud2").style.display=g?"":"none"; $("pause").style.display=id===null?"":"none"; }
+function show(id){ for(const k of ["menu","over","paused","lock","cut","lb"]) $(k).classList.toggle("hidden",k!==id); const g=(id===null||id==="paused"||id==="over"); $("hud").style.display=$("hud2").style.display=g?"":"none"; $("pause").style.display=id===null?"":"none"; }
 function start(){ startDoors(); }
 // ---------- Двери: отмычка и болторез ----------
 let lock=null, cut=null, doorsDoneOnce=false, pressing=false;
@@ -660,6 +717,8 @@ function renderCut(){
 function startRun(){ state="play"; show(null); popup("👮 Полиция! Беги!","#ff6a6a"); beep(700,500,.25,"square",.06); setTimeout(()=>beep(700,500,.25,"square",.06),300); }
 
 $("best").textContent=best;
+$("lbBtn").onclick=()=>openLB("menu"); $("lbBtn2").onclick=()=>openLB("over"); $("lbClose").onclick=()=>show(lbFrom);
+$("sendScore").onclick=sendScore; $("nick").addEventListener("keydown",e=>{ e.stopPropagation(); if(e.key==="Enter") sendScore(); });
 $("play").onclick=start; $("again").onclick=start;
 $("toMenu").onclick=$("quit").onclick=()=>{ state="menu"; $("best").textContent=best; show("menu"); };
 $("pause").onclick=e=>{ e.stopPropagation(); if(state==="play"){state="paused"; show("paused");} };
