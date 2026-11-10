@@ -66,8 +66,11 @@
   .chip b{color:#fff;font-size:15px}
 
   /* --- лист бумаги поверх фото --- */
-  .sheet{position:relative;background:var(--bg);margin:0 calc(50% - 50vw);padding:26px calc(50vw - 50% + 22px) 10px;border-radius:26px 26px 0 0;box-shadow:0 -20px 50px -20px rgba(0,0,0,.35)}
+  .sheet{position:relative;background:linear-gradient(180deg,rgba(243,239,231,.86) 0,rgba(243,239,231,.5) 260px,rgba(243,239,231,.42) 100%);margin:0 calc(50% - 50vw);padding:26px calc(50vw - 50% + 22px) 10px;border-radius:26px 26px 0 0;box-shadow:0 -20px 50px -20px rgba(0,0,0,.35)}
   .sheet>*{max-width:980px}
+  .sheet .section h2,.sheet .section h2 small,.sheet>.note,.sheet footer{text-shadow:0 0 14px rgba(255,255,255,.9),0 0 3px rgba(255,255,255,.9)}
+  .sheet footer,.sheet>.note{background:rgba(251,249,245,.82);border-radius:14px;padding:14px 16px;border-top:0}
+  .sheet .tabs,.sheet .ttabs{background:rgba(239,233,222,.92)}
 
   .panel{background:var(--panel);border-radius:20px;padding:22px;margin-bottom:22px;box-shadow:var(--sh)}
   .post{background:var(--paper);border-left:4px solid var(--accent2);border-radius:6px 16px 16px 6px;padding:16px 18px;margin:0 0 22px;box-shadow:var(--sh)}
@@ -1177,7 +1180,11 @@ async function initBg(){
   cred(0);
   if(matchMedia("(prefers-reduced-motion: reduce)").matches) return;
   let k=0; const els=box.querySelectorAll(".bgp");
-  setInterval(()=>{ if(document.hidden) return; els[k].classList.remove("on"); k=(k+1)%els.length; els[k].classList.add("on"); cred(k); },10000);
+  const show=i=>{ if(i===k) return; els[k].classList.remove("on"); k=i; els[k].classList.add("on"); cred(k); };
+  // ниже первого экрана — всегда один вид с крыши (черепица + собор), слайд-шоу только наверху
+  const below=()=>window.scrollY>innerHeight*0.6;
+  addEventListener("scroll",()=>{ if(below()) show(0); },{passive:true});
+  setInterval(()=>{ if(document.hidden||below()) return; show((k+1)%els.length); },10000);
 }
 initBg();
 
