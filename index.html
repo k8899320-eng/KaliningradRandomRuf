@@ -958,7 +958,7 @@ $("authForm").addEventListener("submit",async e=>{
       if(r&&r.error){ clearTimeout(slow); throw (taken?e1:new Error(r.error)); }
     }
     clearTimeout(slow);
-    if(r.error) throw new Error(r.error);
+    if(r.error) throw new Error(/Неверный ник/.test(r.error)&&authMode==="login"?"Неверный ник или пароль. Если ты тут впервые — сначала нажми вкладку «Регистрация» сверху и создай аккаунт 👆":r.error);
     setToken(r.token,r.nick); ME={nick:r.nick}; hideAuth(); onLogin(); toast("👋 Привет, "+r.nick+"!");
     countVisit();
   }catch(err){ $("aMsg").textContent=err.message; }
