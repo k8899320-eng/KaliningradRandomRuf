@@ -821,7 +821,7 @@ function draw(dt){
   const portrait=innerWidth<innerHeight;
   if(menu){
     const a=t*.12, R=portrait?26:21;
-    tv.set(px+2,py+2.6,0); camLook.lerp(tv,.1);
+    tv.set(px+2,py+2.6,0); if(camSnap){ camLook.copy(tv); camY=py; camSnap=false; } else camLook.lerp(tv,.1);
     camPos.set(px+Math.sin(a)*R,py+5.5+Math.sin(t*.3)*1.2,Math.cos(a)*R);
   } else {
     const followY=player.dead?camY:Y3(Math.min(player.y,340));
@@ -922,7 +922,7 @@ $("best").textContent=best;
 $("lbBtn").onclick=()=>openLB("menu"); $("lbBtn2").onclick=()=>openLB("over"); $("lbClose").onclick=()=>show(lbFrom);
 $("sendScore").onclick=sendScore; $("nick").addEventListener("keydown",e=>{ e.stopPropagation(); if(e.key==="Enter") sendScore(); });
 $("play").onclick=start; $("again").onclick=start;
-$("toMenu").onclick=$("quit").onclick=()=>{ state="menu"; $("best").textContent=best; show("menu"); };
+$("toMenu").onclick=$("quit").onclick=()=>{ reset(); camSnap=true; state="menu"; $("best").textContent=best; show("menu"); };
 $("pause").onclick=e=>{ e.stopPropagation(); if(state==="play"){state="paused"; show("paused");} };
 $("resume").onclick=()=>{ state="play"; show(null); };
 $("skip1").onclick=e=>{ e.stopPropagation(); startRun(); };
