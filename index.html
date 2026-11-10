@@ -85,6 +85,31 @@
   #banScreen h2{font-family:Unbounded,sans-serif;font-size:clamp(22px,5vw,30px);margin:10px 0 14px;color:#ff6a6a}
   #banScreen .why{font-size:17px;color:#eef1f6;background:#161a22;border:1px solid #3a2a2a;border-radius:14px;padding:14px 16px}
   #banScreen .small{color:#8b93a5;font-size:13px}
+  .modal{position:fixed;inset:0;z-index:100001;background:rgba(6,8,12,.86);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center;padding:18px;overflow-y:auto}
+  .mbox{width:100%;max-width:400px;background:#12151c;border:1px solid #262c38;border-radius:22px;padding:24px 20px;text-align:center;box-shadow:0 30px 80px -20px rgba(0,0,0,.9);margin:auto}
+  .msub{color:var(--muted);font-size:14px;margin:0 0 16px}
+  .atabs{display:flex;background:#0f1218;border:1px solid #262c38;border-radius:12px;padding:4px;margin-bottom:14px}
+  .atabs button{flex:1;background:none;border:0;color:#aab2c5;padding:9px;border-radius:9px;font:inherit;font-weight:600;cursor:pointer}
+  .atabs button.on{background:#1f2430;color:#fff}
+  #authForm{display:grid;gap:10px}
+  #authForm input[type=text],#authForm input:not([type]),#authForm input[type=password]{background:#0f1218;color:var(--text);border:1px solid #262c38;border-radius:12px;padding:12px 14px;font:inherit;font-size:16px}
+  #authForm input:focus{outline:none;border-color:var(--accent)}
+  .arules{font-size:13px;color:#cfd5e1;display:flex;gap:8px;align-items:center;text-align:left}
+  .arules a{color:var(--accent2)}
+  #aSubmit,.mainbtn{background:linear-gradient(135deg,var(--accent),var(--accent2));color:#1a0d06;border:0;border-radius:12px;padding:13px;font:inherit;font-weight:700;font-size:16px;cursor:pointer;width:100%}
+  .amsg{min-height:20px;font-size:14px;color:#ff8a7a}
+  .rules{padding-left:20px;line-height:1.5;color:#cfd5e1;font-size:14px;display:grid;gap:6px;margin:0 0 14px}
+  .mebox{display:flex;gap:8px;align-items:center;font-size:13px;white-space:nowrap}
+  .mebox .menick{color:var(--accent2);font-weight:600}
+  .mebox a{color:var(--muted);text-decoration:none}
+  .post{background:linear-gradient(135deg,rgba(255,106,61,.12),rgba(255,176,61,.06));border:1px solid rgba(255,176,61,.35);border-radius:18px;padding:14px 16px;margin:0 0 18px}
+  .post .plabel{font-size:12px;color:var(--accent2);margin-bottom:4px}
+  .post h3{margin:0 0 6px;font-family:Unbounded,sans-serif;font-weight:500;font-size:18px}
+  .post .pbody{white-space:pre-wrap;color:#dfe3ec;line-height:1.5}
+  .crow2{display:flex;align-items:center;gap:12px;margin-top:6px}
+  .like{background:#1f2430;border:1px solid #2c3342;color:#eef1f6;border-radius:999px;padding:5px 12px;font:inherit;font-size:14px;cursor:pointer}
+  .like.on{border-color:#ff5a7a}
+  .pend{margin-top:6px;font-size:13px;color:#ffd76a}
   #lightbox{position:fixed;inset:0;background:rgba(0,0,0,.88);display:none;align-items:center;justify-content:center;z-index:9500;cursor:zoom-out;padding:16px}
   #lightbox img{max-width:100%;max-height:100%;border-radius:12px}
   h1{font-family:Unbounded,sans-serif;font-weight:800;font-size:clamp(28px,6vw,52px);line-height:1;margin:0 0 8px;letter-spacing:-.02em}
@@ -167,6 +192,7 @@
 <body>
 <div class="topbar"><div class="in">
   <div class="logo">🏢 Руф<span>·</span>КЛД</div>
+  <span id="meBox" class="mebox"></span>
   <nav class="nav"><a href="#mine" data-tab="fav">⭐ Избранное</a><a href="#mine" data-tab="hist">🕘 История</a><a href="#allmap-sec">🗺 Карта</a><a href="#" id="openGame3">🎮 Игра</a></nav>
 </div></div>
 <div class="wrap">
@@ -181,6 +207,7 @@
     <g fill="#ffd27a" opacity=".75"><rect x="38" y="46" width="4" height="5"/><rect x="88" y="34" width="4" height="5"/><rect x="96" y="48" width="4" height="5"/><rect x="176" y="28" width="4" height="5"/><rect x="250" y="44" width="4" height="5"/><rect x="330" y="38" width="4" height="5"/><rect x="420" y="30" width="4" height="5"/><rect x="430" y="44" width="4" height="5"/><rect x="560" y="22" width="4" height="5"/><rect x="640" y="48" width="4" height="5"/><rect x="700" y="38" width="4" height="5"/><rect x="790" y="34" width="4" height="5"/></g>
   </svg>
   </div>
+  <div class="post" id="postBox" style="display:none"></div>
   <div class="panel">
 
   <div class="controls">
@@ -214,7 +241,7 @@
     <div class="comments" id="comments">
       <h3>💬 Комментарии <small id="ccount"></small></h3>
       <form class="cform" id="cform" autocomplete="off">
-        <input id="cname" maxlength="30" placeholder="Ник (необязательно)">
+        <div class="cmsg" id="asWho"></div>
         <textarea id="ctext" maxlength="500" placeholder="Что скажешь про этот дом? Вид, подъезд, охрана…"></textarea>
         <div class="pickrow">
           <label class="filebtn">📷 Фото с крыши<input type="file" id="cfile" accept="image/*"></label>
@@ -248,10 +275,43 @@
   </p>
   <p class="note" style="border-left-color:var(--accent2)">🎮 Хочешь побегать по крышам без риска? Играй в <a href="#" id="openGame2" style="color:var(--accent2)">«Руфер Калининград»</a>.</p>
   <footer><span>🏢 Руф·рандомайзер Калининград · <span id="footVisits"></span></span>
+  <span><a href="#" data-rules>📜 Правила сайта</a></span>
   <span class="creator">Создатель: <b>V1n41k</b> · ✉️ <a href="mailto:k8899320@gmail.com">k8899320@gmail.com</a></span><span>Данные: © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a>, фото: Wikimedia Commons и пользователи</span>
   <span style="flex-basis:100%;font-size:12px;opacity:.7">Для подсчёта посетителей и защиты от нарушителей сайт сохраняет IP-адрес. Он не публикуется.</span></footer>
 </div>
 <div class="toast" id="toast"></div>
+<div id="authScreen" class="modal" style="display:none">
+  <div class="mbox">
+    <div class="logo" style="font-size:22px;margin-bottom:6px">🏢 Руф<span>·</span>КЛД</div>
+    <p class="msub">Чтобы пользоваться сайтом, войди или создай аккаунт</p>
+    <div class="atabs"><button data-m="reg" class="on">Регистрация</button><button data-m="login">Вход</button></div>
+    <form id="authForm" autocomplete="on">
+      <input id="aNick" maxlength="20" placeholder="Ник (3–20 символов)" autocomplete="username" required>
+      <input id="aPass" type="password" maxlength="72" placeholder="Пароль (от 6 символов)" autocomplete="current-password" required>
+      <input id="aPass2" type="password" maxlength="72" placeholder="Повтори пароль" autocomplete="new-password">
+      <label id="aRulesRow" class="arules"><input type="checkbox" id="aRules"> Я прочитал и принимаю <a href="#" data-rules>правила сайта</a></label>
+      <button id="aSubmit" type="submit">Создать аккаунт</button>
+      <div class="amsg" id="aMsg"></div>
+    </form>
+  </div>
+</div>
+<div id="rulesModal" class="modal" style="display:none;z-index:100002">
+  <div class="mbox" style="text-align:left;max-width:520px">
+    <h2 style="font-family:Unbounded,sans-serif;font-size:22px;margin:0 0 12px">📜 Правила сайта</h2>
+    <ol class="rules">
+      <li><b>Уважай других.</b> Без оскорблений, угроз, травли, разжигания ненависти.</li>
+      <li><b>Без спама и флуда.</b> Не пиши одно и то же, не рекламируй.</li>
+      <li><b>Фото — только реальный вид с крыши этого дома.</b> Скрины, мемы, чужие и случайные фото удаляются.</li>
+      <li><b>Без людей на фото без их согласия</b> и без личных данных: номера квартир, лица, документы, номера машин.</li>
+      <li><b>Без неприличного и шок-контента.</b></li>
+      <li><b>Безопасность прежде всего.</b> Сайт не призывает лазить на крыши: это опасно и может быть нарушением закона. Ответственность — на тебе.</li>
+      <li><b>Один человек — один аккаунт.</b> Не выдавай себя за других и за создателя.</li>
+      <li>За нарушения — <b>удаление контента и блокировка</b> на время или навсегда. Решение принимает создатель.</li>
+    </ol>
+    <p class="msub">Вопросы и жалобы: <a href="mailto:k8899320@gmail.com" style="color:#c6cbd8">k8899320@gmail.com</a></p>
+    <button id="rulesClose" class="mainbtn">Понятно</button>
+  </div>
+</div>
 <div id="lightbox"><img id="lbimg" alt=""></div>
 
 <script>
@@ -504,8 +564,14 @@ async function sbErr(r){
   return new Error("HTTP "+r.status+(t?" — "+t:""));
 }
 let currentHouse=null;
-try{ $("cname").value=localStorage.getItem("roof_nick")||""; }catch(e){}
-
+// ---------- Аккаунт ----------
+let TOKEN=null, ME=null; try{ TOKEN=localStorage.getItem("roof_token"); }catch(e){}
+async function rpc(name,args,ms){
+  const r=await fetchT(`${SUPA}/rest/v1/rpc/${name}`,ms||15000,{method:"POST",headers:sbHeaders(),body:JSON.stringify(args||{})});
+  if(!r.ok){ let t=""; try{ const j=await r.json(); t=j.message||j.hint||""; }catch(e){} throw new Error(t||("ошибка "+r.status)); }
+  const txt=await r.text(); return txt?JSON.parse(txt):null;
+}
+function setToken(t,nick){ TOKEN=t; try{ if(t){ localStorage.setItem("roof_token",t); localStorage.setItem("roof_nick",nick||""); } else { localStorage.removeItem("roof_token"); } }catch(e){} }
 function fmtDate(iso){
   const d=new Date(iso), diff=(Date.now()-d)/1000;
   if(diff<60) return "только что";
@@ -517,56 +583,46 @@ const PHOTO_BUCKET="roof-photos", SUPA=SUPABASE_URL.replace(/\/$/,"");
 const photoUrl=path=>`${SUPA}/storage/v1/object/public/${PHOTO_BUCKET}/${path}`;
 function renderComments(list){
   $("ccount").textContent=list.length?`(${list.length})`:"";
-  const photos=list.filter(c=>c.photo).length;
-  if(photos) $("ccount").textContent+=` · 📷 ${photos}`;
+  const photos=list.filter(c=>c.photo).length; if(photos) $("ccount").textContent+=` · 📷 ${photos}`;
   $("clist").innerHTML=list.length? list.map(c=>{
-    const ph=(c.photo&&/^[a-z0-9\/_.-]{1,200}$/.test(c.photo))?`<div class="cphoto"><img src="${photoUrl(c.photo)}" alt="Вид с крыши" loading="lazy" data-full="${photoUrl(c.photo)}"><button class="rep" data-rep="${c.id}">🚩 Не с крыши / плохое фото</button></div>`:"";
+    const ok=c.photo&&/^[a-z0-9\/_.-]{1,200}$/.test(c.photo);
+    const ph=ok?`<div class="cphoto"><img src="${photoUrl(c.photo)}" alt="Вид с крыши" loading="lazy" data-full="${photoUrl(c.photo)}">
+      <div class="crow2"><button class="like${c.liked?" on":""}" data-like="${c.id}">${c.liked?"❤️":"🤍"} <span>${c.likes||0}</span></button><button class="rep" data-rep="${c.id}">🚩 Не с крыши / плохое фото</button></div></div>`:"";
+    const pend=c.my_pending?`<div class="pend">⏳ Твоё фото на модерации — появится после проверки</div>`:"";
     const txt=(c.body&&c.body!=="📷")?`<div class="txt">${esc(c.body)}</div>`:"";
-    return `<div class="citem"><div class="meta"><b>${esc(c.author||"аноним")}</b> · ${fmtDate(c.created_at)}${ph?" · 📷 вид с крыши":""}</div>${txt}${ph}</div>`;
+    if(!txt&&!ph&&!pend) return "";
+    return `<div class="citem"><div class="meta"><b>${esc(c.author||"аноним")}</b> · ${fmtDate(c.created_at)}${ph?" · 📷 вид с крыши":""}</div>${txt}${ph}${pend}</div>`;
   }).join("") : `<div class="cmsg">Пока никто ничего не написал. Будь первым — можно с фото с крыши 📷</div>`;
 }
 $("clist").addEventListener("click",async e=>{
   const img=e.target.closest(".cphoto img"); if(img){ $("lbimg").src=img.dataset.full; $("lightbox").style.display="flex"; return; }
+  const lk=e.target.closest("[data-like]");
+  if(lk){ lk.disabled=true; try{ const r=await rpc("toggle_like",{p_token:TOKEN,p_comment:+lk.dataset.like}); lk.classList.toggle("on",r.liked); lk.innerHTML=`${r.liked?"❤️":"🤍"} <span>${r.likes}</span>`; }catch(err){ toast(err.message); } lk.disabled=false; return; }
   const rb=e.target.closest("[data-rep]"); if(!rb) return;
-  let rid=""; try{ rid=localStorage.getItem("roof_rid")||""; if(!rid){ rid=Math.random().toString(36).slice(2)+Date.now().toString(36); localStorage.setItem("roof_rid",rid);} }catch(err){ rid=Math.random().toString(36).slice(2)+"xxxxxxxx"; }
   rb.disabled=true; rb.textContent="Отправляю жалобу…";
-  try{
-    const r=await fetchT(`${SUPA}/rest/v1/photo_reports`,15000,{method:"POST",headers:sbHeaders({"Prefer":"return=minimal"}),body:JSON.stringify({comment_id:+rb.dataset.rep,reporter:rid})});
-    if(r.status===409){ rb.textContent="Ты уже жаловался на это фото"; return; }
-    if(!r.ok) throw await sbErr(r);
-    rb.textContent="✅ Жалоба принята. После 3 жалоб фото удалится";
-  }catch(err){ rb.textContent="Не отправилось: "+(err.message||err); rb.disabled=false; }
+  try{ await rpc("report_photo",{p_token:TOKEN,p_comment:+rb.dataset.rep}); rb.textContent="✅ Жалоба принята. После 3 жалоб фото удалится"; }
+  catch(err){ rb.textContent="Не отправилось: "+err.message; rb.disabled=false; }
 });
 $("lightbox").onclick=()=>{ $("lightbox").style.display="none"; };
 async function loadComments(b){
   const sameHouse = currentHouse===b.id;
   currentHouse=b.id;
-  if(!COMMENTS_ON){
-    $("clist").innerHTML=`<div class="cmsg">Комментарии ещё не подключены: владельцу сайта нужно вставить ключи Supabase в index.html.</div>`;
-    $("csend").disabled=true; return;
-  }
+  if(!COMMENTS_ON){ $("clist").innerHTML=`<div class="cmsg">Комментарии не подключены.</div>`; $("csend").disabled=true; return; }
   $("csend").disabled=false; if(!sameHouse){ $("cmsg").textContent=""; $("ccount").textContent=""; }
   $("clist").innerHTML=`<div class="cmsg">Загружаю комментарии…</div>`;
   try{
-    let r=await fetchT(`${SB}?house_id=eq.${encodeURIComponent(b.id)}&select=id,author,body,created_at,photo&order=created_at.desc&limit=100`,15000,{headers:sbHeaders()});
-    if(!r.ok) r=await fetchT(`${SB}?house_id=eq.${encodeURIComponent(b.id)}&select=id,author,body,created_at&order=created_at.desc&limit=100`,15000,{headers:sbHeaders()});
-    if(!r.ok) throw await sbErr(r);
-    const list=await r.json();
-    if(currentHouse===b.id) renderComments(list);
-  }catch(e){
-    if(currentHouse===b.id) $("clist").innerHTML=`<div class="cmsg err">Не удалось загрузить комментарии (${esc(e.message||e)}).</div>`;
-  }
+    const list=await rpc("get_comments",{p_house:b.id,p_token:TOKEN});
+    if(currentHouse===b.id) renderComments(list||[]);
+  }catch(e){ if(currentHouse===b.id) $("clist").innerHTML=`<div class="cmsg err">Не удалось загрузить комментарии (${esc(e.message||e)}).</div>`; }
 }
 $("cform").addEventListener("submit",async ev=>{
   ev.preventDefault();
   if(!COMMENTS_ON||!currentHouse) return;
-  if($("cweb").value) return; // бот
-  let body=$("ctext").value.trim(); const author=($("cname").value.trim()||"аноним").slice(0,30);
+  if(!TOKEN){ showAuth(); return; }
+  if($("cweb").value) return;
+  const body=$("ctext").value.trim();
   if(!body&&!pickedPhoto){ $("cmsg").textContent="Напиши что-нибудь или добавь фото 🙂"; return; }
   if(pickedPhoto&&!$("pok").checked){ $("cmsg").textContent="Отметь галочку, что это вид с крыши этого дома"; return; }
-  if(!body) body="📷";
-  let last=0; try{ last=+localStorage.getItem("roof_last")||0; }catch(e){}
-  if(Date.now()-last<30000){ $("cmsg").textContent="Подожди немного перед следующим комментарием."; return; }
   const house=currentHouse;
   $("csend").disabled=true; $("cmsg").textContent="Отправляю…";
   try{
@@ -575,17 +631,14 @@ $("cform").addEventListener("submit",async ev=>{
       $("cmsg").textContent="Загружаю фото…";
       const path=house.toLowerCase().replace(/[^a-z0-9]/g,"-")+"/"+Date.now().toString(36)+"-"+Math.random().toString(36).slice(2,8)+".jpg";
       const up=await fetchT(`${SUPA}/storage/v1/object/${PHOTO_BUCKET}/${path}`,30000,{method:"POST",headers:{"apikey":SUPABASE_KEY,"Content-Type":"image/jpeg","x-upsert":"false"},body:pickedPhoto});
-      if(!up.ok){ const e=await sbErr(up); throw new Error("фото не загрузилось ("+e.message+"). Возможно, хранилище фото ещё не включено"); }
+      if(!up.ok) throw new Error("фото не загрузилось");
       photo=path;
     }
-    const payload={house_id:house,author,body:body.slice(0,500)}; if(photo) payload.photo=photo;
-    const r=await fetchT(SB,15000,{method:"POST",headers:sbHeaders({"Prefer":"return=minimal"}),
-      body:JSON.stringify(payload)});
-    if(!r.ok) throw await sbErr(r);
-    try{ localStorage.setItem("roof_nick",$("cname").value.trim()); localStorage.setItem("roof_last",Date.now()); }catch(e){}
-    $("ctext").value=""; clearPhoto(); $("cmsg").textContent="✅ Отправлено";
+    const r=await rpc("add_comment",{p_token:TOKEN,p_house:house,p_body:body,p_photo:photo});
+    $("ctext").value=""; clearPhoto();
+    $("cmsg").textContent=r&&r.photo_pending?"✅ Отправлено! Фото появится после проверки модератором":"✅ Отправлено";
     if(currentHouse===house) loadComments({id:house});
-  }catch(e){ $("cmsg").textContent="Не отправилось: "+(e.message==="Failed to fetch"?"нет связи с Supabase (Failed to fetch) — возможно, сайт Supabase заблокирован у твоего провайдера":(e.message||e)); }
+  }catch(e){ $("cmsg").textContent="Не отправилось: "+(e.message==="Failed to fetch"?"нет связи с сервером":(e.message||e)); }
   finally{ $("csend").disabled=false; }
 });
 
@@ -649,22 +702,58 @@ const visitChip=()=>visits!=null?`<span class="chip">👥 посетителей
 async function countVisit(){
   if(!COMMENTS_ON) return;
   try{
-    const r=await fetchT(`${SUPA}/rest/v1/rpc/register_visit`,15000,{method:"POST",headers:sbHeaders(),body:"{}"});
-    if(!r.ok) return;
-    const data=await r.json();
-    visits=typeof data==="number"?data:data.count;
-    if(data&&data.banned) showBan(data.reason);
-    renderStats();
+    const data=await rpc("register_visit",{p_token:TOKEN});
+    visits=data.count; renderStats();
     const f=$("footVisits"); if(f) f.textContent="👥 "+Number(visits).toLocaleString("ru-RU")+" посетителей";
-  }catch(e){}
+    if(data.banned){ showBan(data.reason,data.until); return; }
+    if(data.user){ ME=data.user; onLogin(); } else { if(TOKEN) setToken(null); showAuth(); }
+  }catch(e){ if(!TOKEN) showAuth(); }
 }
-function showBan(reason){
+function showBan(reason,until){
   const d=document.createElement("div"); d.id="banScreen";
+  const u=until?`<p class="small" style="font-size:14px;color:#cfd5e1">Блокировка до <b>${new Date(until).toLocaleString("ru-RU",{day:"numeric",month:"long",hour:"2-digit",minute:"2-digit"})}</b></p>`:`<p class="small" style="font-size:14px;color:#cfd5e1">Блокировка <b>навсегда</b></p>`;
   d.innerHTML=`<div class="banbox"><div style="font-size:54px">⛔</div><h2>Вы заблокированы создателем</h2>
-    <p class="why">Причина: <b>${esc(reason||"не указана")}</b></p>
+    <p class="why">Причина: <b>${esc(reason||"не указана")}</b></p>${u}
     <p class="small">Если считаешь, что это ошибка — напиши создателю: <a href="mailto:k8899320@gmail.com" style="color:#c6cbd8">k8899320@gmail.com</a></p></div>`;
   document.body.appendChild(d); document.body.style.overflow="hidden";
   try{ document.getElementById("gameLayer").remove(); }catch(e){}
+  try{ $("authScreen").style.display="none"; }catch(e){}
+}
+// ---------- Экран входа / регистрации ----------
+let authMode="reg";
+function showAuth(){ $("authScreen").style.display="flex"; document.body.style.overflow="hidden"; setAuthMode(localStorage.getItem("roof_nick")?"login":"reg"); }
+function hideAuth(){ $("authScreen").style.display="none"; document.body.style.overflow=""; }
+function setAuthMode(m){ authMode=m; document.querySelectorAll("#authScreen .atabs button").forEach(b=>b.classList.toggle("on",b.dataset.m===m));
+  $("aPass2").style.display=$("aRulesRow").style.display=m==="reg"?"":"none"; $("aSubmit").textContent=m==="reg"?"Создать аккаунт":"Войти"; $("aMsg").textContent=""; }
+document.querySelectorAll("#authScreen .atabs button").forEach(b=>b.onclick=()=>setAuthMode(b.dataset.m));
+$("authForm").addEventListener("submit",async e=>{
+  e.preventDefault();
+  const nick=$("aNick").value.trim(), pass=$("aPass").value;
+  if(authMode==="reg"&&pass!==$("aPass2").value){ $("aMsg").textContent="Пароли не совпадают"; return; }
+  if(authMode==="reg"&&!$("aRules").checked){ $("aMsg").textContent="Прочитай правила и поставь галочку"; return; }
+  $("aSubmit").disabled=true; $("aMsg").textContent="Секунду…";
+  try{
+    const r=authMode==="reg"? await rpc("register_user",{p_nick:nick,p_pass:pass,p_rules:true}) : await rpc("login_user",{p_nick:nick,p_pass:pass});
+    if(r.error) throw new Error(r.error);
+    setToken(r.token,r.nick); ME={nick:r.nick}; hideAuth(); onLogin(); toast("👋 Привет, "+r.nick+"!");
+    countVisit();
+  }catch(err){ $("aMsg").textContent=err.message; }
+  $("aSubmit").disabled=false;
+});
+function onLogin(){
+  $("meBox").innerHTML=`<span class="menick">👤 ${esc(ME.nick)}</span><a href="#" id="logout">Выйти</a>`;
+  $("logout").onclick=async e=>{ e.preventDefault(); try{ await rpc("logout_user",{p_token:TOKEN}); }catch(err){} setToken(null); ME=null; $("meBox").innerHTML=""; showAuth(); };
+  $("asWho").textContent="Пишешь как "+ME.nick;
+  if(currentHouse) loadComments({id:currentHouse});
+}
+// ---------- Правила ----------
+function openRules(e){ if(e) e.preventDefault(); $("rulesModal").style.display="flex"; }
+$("rulesClose").onclick=()=>{ $("rulesModal").style.display="none"; };
+$("rulesModal").onclick=e=>{ if(e.target.id==="rulesModal") $("rulesModal").style.display="none"; };
+document.querySelectorAll("[data-rules]").forEach(a=>a.addEventListener("click",openRules));
+// ---------- Пост создателя ----------
+async function loadPost(){
+  try{ const p=await rpc("get_post",{}); if(p&&p.title){ $("postBox").innerHTML=`<div class="plabel">📣 От создателя · ${fmtDate(p.created_at)}</div><h3>${esc(p.title)}</h3><div class="pbody">${esc(p.body)}</div>`; $("postBox").style.display="block"; } }catch(e){}
 }
 function renderStats(){
   if(!all.length||all[0].fallback){ $("stats").innerHTML=visitChip(); return; }
@@ -711,7 +800,7 @@ function start(){
   });
 }
 start();
-countVisit();
+countVisit(); loadPost();
 </script>
 <div id="gameLayer" style="display:none;position:fixed;inset:0;z-index:9999;background:#0b0e1a">
   <button id="closeGame" aria-label="Закрыть игру" style="position:absolute;top:calc(max(8px,env(safe-area-inset-top)) + 40px);right:10px;z-index:2;width:36px;height:36px;border-radius:12px;border:1px solid #2c3342;background:rgba(31,36,48,.85);color:#eef1f6;font-size:20px;cursor:pointer">✕</button>

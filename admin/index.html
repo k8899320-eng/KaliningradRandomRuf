@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<meta name="theme-color" content="#0d0f14">
+<title>Админка · Руф-КЛД</title>
+<style>
+  :root{--bg:#0d0f14;--panel:#161a22;--line:#262c38;--text:#eef1f6;--muted:#8b93a5;--accent:#ff6a3d;--accent2:#ffb03d;--ok:#4ade80;--bad:#ff6a6a}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;font-size:15px}
+  .wrap{max-width:1000px;margin:0 auto;padding:16px}
+  header{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:14px}
+  header h1{font-size:20px;margin:0}
+  header h1 span{color:var(--accent)}
+  header .me{margin-left:auto;color:var(--muted);font-size:14px}
+  button{font:inherit;cursor:pointer;border-radius:10px;border:1px solid #2c3342;background:#1f2430;color:var(--text);padding:8px 12px}
+  button.pri{background:linear-gradient(135deg,var(--accent),var(--accent2));color:#1a0d06;border:0;font-weight:700}
+  button.ok{border-color:#2c6b44;color:var(--ok)}
+  button.bad{border-color:#6b2c2c;color:var(--bad)}
+  button:disabled{opacity:.5}
+  input,select,textarea{font:inherit;background:#0f1218;color:var(--text);border:1px solid var(--line);border-radius:10px;padding:9px 11px}
+  textarea{width:100%;min-height:120px;resize:vertical}
+  .tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px}
+  .tabs button.on{background:#2a2f3d;border-color:var(--accent2);color:var(--accent2)}
+  .tabs .n{background:var(--accent);color:#1a0d06;border-radius:99px;padding:0 7px;font-size:12px;margin-left:4px}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:12px;margin-bottom:10px}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:10px}
+  .ph img{width:100%;max-height:320px;object-fit:cover;border-radius:10px;display:block;cursor:zoom-in}
+  .meta{color:var(--muted);font-size:13px;margin:6px 0}
+  .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+  table{width:100%;border-collapse:collapse;font-size:14px}
+  th,td{padding:8px 6px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
+  th{color:var(--muted);font-weight:600;font-size:12px;text-transform:uppercase}
+  .ip{font-family:ui-monospace,Menlo,monospace;font-size:13px}
+  .tag{display:inline-block;font-size:12px;border-radius:99px;padding:2px 8px;border:1px solid var(--line)}
+  .tag.ban{color:var(--bad);border-color:#6b2c2c}.tag.adm{color:var(--accent2);border-color:#6b5a2c}
+  .empty{color:var(--muted);padding:20px;text-align:center}
+  .tablewrap{overflow-x:auto}
+  .login{max-width:360px;margin:12vh auto;background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:22px;display:grid;gap:10px;text-align:center}
+  .msg{min-height:20px;color:var(--bad);font-size:14px}
+  .muted{color:var(--muted)}
+  #modal{position:fixed;inset:0;background:rgba(0,0,0,.75);display:none;align-items:center;justify-content:center;padding:16px;z-index:10}
+  #modal .box{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:18px;max-width:420px;width:100%;display:grid;gap:10px}
+  #lb{position:fixed;inset:0;background:rgba(0,0,0,.9);display:none;align-items:center;justify-content:center;z-index:20;cursor:zoom-out}
+  #lb img{max-width:96%;max-height:96%}
+</style>
+</head>
+<body>
+<div class="wrap" id="app"></div>
+<div id="modal"><div class="box" id="mbox"></div></div>
+<div id="lb" onclick="this.style.display='none'"><img id="lbimg" alt=""></div>
+<script>
+"use strict";
+const SUPA="https://hmkecihzribgeguzcwkt.supabase.co", KEY="sb_publishable_9HipXlYi7d-mQbgXMVmr-w_v_n38Dkz";
+const photoUrl=p=>`${SUPA}/storage/v1/object/public/roof-photos/${p}`;
+const $=id=>document.getElementById(id);
+const esc=s=>String(s==null?"":s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const dt=s=>s?new Date(s).toLocaleString("ru-RU",{day:"2-digit",month:"2-digit",year:"2-digit",hour:"2-digit",minute:"2-digit"}):"—";
+let TOKEN=null, NICK="", DATA=null, TAB="pending";
+try{ TOKEN=localStorage.getItem("roof_admin_token"); NICK=localStorage.getItem("roof_admin_nick")||""; }catch(e){}
+async function rpc(name,args){
+  const r=await fetch(`${SUPA}/rest/v1/rpc/${name}`,{method:"POST",headers:{"apikey":KEY,"Content-Type":"application/json"},body:JSON.stringify(args||{})});
+  if(!r.ok){ let t=""; try{ const j=await r.json(); t=j.message||""; }catch(e){} throw new Error(t||("ошибка "+r.status)); }
+  const x=await r.text(); return x?JSON.parse(x):null;
+}
+const REASONS=["Спам","Оскорбления","Неприемлемые фото","Фото не с крыши","Флуд","Мультиаккаунт","Выдаёт себя за другого"];
+const DURS=[[1,"1 час"],[24,"1 день"],[72,"3 дня"],[168,"7 дней"],[720,"30 дней"],[0,"Навсегда"]];
+
+function loginView(msg){
+  $("app").innerHTML=`<div class="login"><h2 style="margin:0">🔐 Админка Руф-КЛД</h2>
+    <div class="muted" style="font-size:14px">Вход аккаунтом с сайта</div>
+    <input id="ln" placeholder="Ник" autocomplete="username" value="${esc(NICK)}"><input id="lp" type="password" placeholder="Пароль" autocomplete="current-password">
+    <button class="pri" id="lgo">Войти</button><div class="msg" id="lmsg">${esc(msg||"")}</div></div>`;
+  const go=async()=>{ $("lmsg").textContent="…"; try{ const r=await rpc("login_user",{p_nick:$("ln").value,p_pass:$("lp").value}); if(r.error) throw new Error(r.error);
+      TOKEN=r.token; NICK=r.nick; localStorage.setItem("roof_admin_token",TOKEN); localStorage.setItem("roof_admin_nick",NICK); load(); }catch(e){ $("lmsg").textContent=e.message; } };
+  $("lgo").onclick=go; $("lp").onkeydown=e=>{ if(e.key==="Enter") go(); };
+}
+function claimView(){
+  $("app").innerHTML=`<div class="login"><h2 style="margin:0">🔑 Стать админом</h2>
+    <div class="muted" style="font-size:14px">Ты вошёл как <b>${esc(NICK)}</b>, но у аккаунта нет прав админа. Введи одноразовый код админа.</div>
+    <input id="cc" placeholder="Код вида KLD-XXXX-XXXX"><button class="pri" id="cgo">Активировать</button>
+    <button id="clo">Войти другим аккаунтом</button><div class="msg" id="cmsg"></div></div>`;
+  $("cgo").onclick=async()=>{ try{ await rpc("admin_claim",{p_token:TOKEN,p_code:$("cc").value.trim()}); load(); }catch(e){ $("cmsg").textContent=e.message; } };
+  $("clo").onclick=logout;
+}
+function logout(){ try{ rpc("logout_user",{p_token:TOKEN}); }catch(e){} TOKEN=null; localStorage.removeItem("roof_admin_token"); loginView(); }
+
+async function load(){
+  if(!TOKEN) return loginView();
+  try{ DATA=await rpc("admin_overview",{p_token:TOKEN}); render(); }
+  catch(e){ if(/Нет доступа/.test(e.message)){ const v=await rpc("register_visit",{p_token:TOKEN}).catch(()=>null); if(v&&v.user) return claimView(); return loginView("Сессия истекла, войди снова"); } $("app").innerHTML=`<div class="empty">Ошибка: ${esc(e.message)} <button onclick="load()">Повторить</button></div>`; }
+}
+function render(){
+  const d=DATA, banned=d.users.filter(u=>u.banned_until).length;
+  const tabs=[["pending","📷 Модерация",d.pending.length],["users","👤 Пользователи",d.users.length],["guests","🌐 Все IP",d.guests.length],["bans","⛔ Баны",d.bans.length],["post","📣 Пост",d.post?1:0]];
+  $("app").innerHTML=`<header><h1>Админка <span>Руф·КЛД</span></h1><button onclick="load()">↻ Обновить</button><div class="me">👑 ${esc(NICK)} · <a href="#" id="lo" style="color:var(--muted)">выйти</a> · <a href="../" style="color:var(--muted)">на сайт</a></div></header>
+    <div class="tabs">${tabs.map(t=>`<button data-t="${t[0]}" class="${TAB===t[0]?"on":""}">${t[1]}${t[2]?`<span class="n">${t[2]}</span>`:""}</button>`).join("")}</div><div id="tab"></div>`;
+  $("lo").onclick=e=>{ e.preventDefault(); logout(); };
+  document.querySelectorAll(".tabs button").forEach(b=>b.onclick=()=>{ TAB=b.dataset.t; render(); });
+  ({pending:tabPending,users:tabUsers,guests:tabGuests,bans:tabBans,post:tabPost})[TAB]();
+}
+function tabPending(){
+  const L=DATA.pending;
+  $("tab").innerHTML=L.length?`<div class="grid">${L.map(c=>`<div class="card"><div class="ph"><img src="${photoUrl(c.photo)}" data-full="${photoUrl(c.photo)}" loading="lazy"></div>
+    <div class="meta"><b style="color:var(--accent2)">${esc(c.author)}</b> · ${dt(c.created_at)} · дом ${esc(c.house_id)}</div>
+    ${c.body&&c.body!=="📷"?`<div style="margin-bottom:8px">${esc(c.body)}</div>`:""}
+    <div class="row"><button class="ok" data-ap="${c.id}">✅ Одобрить</button><button class="bad" data-rj="${c.id}">❌ Отклонить</button><button data-del="${c.id}">🗑 Удалить комментарий</button></div></div>`).join("")}</div>`
+    :`<div class="empty">🎉 Нет фото на модерации</div>`;
+  $("tab").onclick=async e=>{
+    const im=e.target.closest("img[data-full]"); if(im){ $("lbimg").src=im.dataset.full; $("lb").style.display="flex"; return; }
+    const ap=e.target.closest("[data-ap]"), rj=e.target.closest("[data-rj]"), dl=e.target.closest("[data-del]");
+    try{
+      if(ap){ ap.disabled=true; await rpc("admin_moderate",{p_token:TOKEN,p_comment:+ap.dataset.ap,p_approve:true}); }
+      else if(rj){ rj.disabled=true; await rpc("admin_moderate",{p_token:TOKEN,p_comment:+rj.dataset.rj,p_approve:false}); }
+      else if(dl){ if(!confirm("Удалить комментарий целиком?")) return; dl.disabled=true; await rpc("admin_delete_comment",{p_token:TOKEN,p_comment:+dl.dataset.del}); }
+      else return;
+      load();
+    }catch(err){ alertMsg(err.message); }
+  };
+}
+function tabUsers(){
+  const L=DATA.users;
+  $("tab").innerHTML=L.length?`<div class="tablewrap"><table><tr><th>Ник</th><th>Последний IP</th><th>IP регистрации</th><th>Был</th><th>Комм.</th><th>Статус</th><th></th></tr>
+    ${L.map(u=>`<tr><td><b>${esc(u.nick)}</b>${u.is_admin?' <span class="tag adm">админ</span>':""}<div class="muted" style="font-size:12px">с ${dt(u.created_at)}</div></td>
+      <td class="ip">${esc(u.last_ip||"—")}</td><td class="ip">${esc(u.reg_ip||"—")}</td><td>${dt(u.last_seen)}</td><td>${u.comments}</td>
+      <td>${u.banned_until?`<span class="tag ban">бан ${u.banned_until==="infinity"||new Date(u.banned_until).getFullYear()>3000?"навсегда":"до "+dt(u.banned_until)}</span><div class="muted" style="font-size:12px">${esc(u.ban_reason||"")}</div>`:"✅"}</td>
+      <td>${u.is_admin?"":u.banned_until?`<button class="ok" data-unban="${u.id}">Разбанить</button>`:`<button class="bad" data-ban="${u.id}">⛔ Бан</button>`}</td></tr>`).join("")}</table></div>`
+    :`<div class="empty">Пока никто не зарегистрировался</div>`;
+  $("tab").onclick=async e=>{
+    const b=e.target.closest("[data-ban]"), ub=e.target.closest("[data-unban]");
+    if(b){ const u=DATA.users.find(x=>x.id==b.dataset.ban); banDialog(`${u.nick} (IP ${u.last_ip||"?"})`,{p_user:u.id,p_ip:null}); }
+    if(ub){ try{ await rpc("admin_unban",{p_token:TOKEN,p_user:+ub.dataset.unban,p_ip:null}); load(); }catch(err){ alertMsg(err.message); } }
+  };
+}
+function tabGuests(){
+  const nickByIp={}; DATA.users.forEach(u=>{ if(u.last_ip) (nickByIp[u.last_ip]=nickByIp[u.last_ip]||[]).push(u.nick); });
+  const bannedIp=new Set(DATA.bans.map(b=>b.ip));
+  const dev=ua=>!ua?"—":/iPhone|iPad/.test(ua)?"📱 iPhone/iPad":/Android/.test(ua)?"📱 Android":/Windows/.test(ua)?"💻 Windows":/Mac OS/.test(ua)?"💻 Mac":/Linux/.test(ua)?"💻 Linux":"❔";
+  $("tab").innerHTML=`<div class="tablewrap"><table><tr><th>IP</th><th>Ник(и)</th><th>Устройство</th><th>Визитов</th><th>Последний заход</th><th></th></tr>
+    ${DATA.guests.map(g=>`<tr><td class="ip">${esc(g.ip)}</td><td>${esc((nickByIp[g.ip]||[]).join(", ")||"— гость")}</td><td title="${esc(g.user_agent)}">${dev(g.user_agent)}</td><td>${g.visits}</td><td>${dt(g.last_seen)}</td>
+      <td>${bannedIp.has(g.ip)?`<button class="ok" data-uip="${esc(g.ip)}">Разбанить</button>`:`<button class="bad" data-bip="${esc(g.ip)}">⛔ Бан IP</button>`}</td></tr>`).join("")}</table></div>`;
+  $("tab").onclick=async e=>{
+    const b=e.target.closest("[data-bip]"), u=e.target.closest("[data-uip]");
+    if(b) banDialog("IP "+b.dataset.bip,{p_user:null,p_ip:b.dataset.bip});
+    if(u){ try{ await rpc("admin_unban",{p_token:TOKEN,p_user:null,p_ip:u.dataset.uip}); load(); }catch(err){ alertMsg(err.message); } }
+  };
+}
+function tabBans(){
+  const L=DATA.bans;
+  $("tab").innerHTML=L.length?`<div class="tablewrap"><table><tr><th>IP</th><th>Причина</th><th>До</th><th>Выдан</th><th></th></tr>
+    ${L.map(b=>`<tr><td class="ip">${esc(b.ip)}</td><td>${esc(b.reason)}</td><td>${b.until?dt(b.until):"навсегда"}</td><td>${dt(b.created_at)}</td><td><button class="ok" data-uip="${esc(b.ip)}">Разбанить</button></td></tr>`).join("")}</table></div>`
+    :`<div class="empty">Активных банов нет</div>`;
+  $("tab").onclick=async e=>{ const u=e.target.closest("[data-uip]"); if(u){ try{ await rpc("admin_unban",{p_token:TOKEN,p_user:null,p_ip:u.dataset.uip}); load(); }catch(err){ alertMsg(err.message); } } };
+}
+function tabPost(){
+  const p=DATA.post;
+  $("tab").innerHTML=`<div class="card"><div class="muted" style="margin-bottom:8px">На главной показывается только один пост. Новый пост заменяет старый.</div>
+    ${p?`<div class="card" style="background:#1b2029"><div class="muted" style="font-size:12px">Сейчас на сайте · ${dt(p.created_at)}</div><b>${esc(p.title)}</b><div style="white-space:pre-wrap;margin-top:4px">${esc(p.body)}</div>
+      <div class="row" style="margin-top:8px"><button class="bad" id="pdel">🗑 Убрать пост</button></div></div>`:""}
+    <div style="display:grid;gap:8px"><input id="pt" maxlength="120" placeholder="Заголовок"><textarea id="pb" maxlength="3000" placeholder="Текст поста"></textarea>
+    <button class="pri" id="psave">📣 ${p?"Заменить пост":"Опубликовать"}</button><div class="msg" id="pmsg"></div></div></div>`;
+  $("psave").onclick=async()=>{ const t=$("pt").value.trim(), b=$("pb").value.trim(); if(!t||!b){ $("pmsg").textContent="Заполни заголовок и текст"; return; }
+    try{ await rpc("admin_set_post",{p_token:TOKEN,p_title:t,p_body:b}); load(); }catch(e){ $("pmsg").textContent=e.message; } };
+  if($("pdel")) $("pdel").onclick=async()=>{ try{ await rpc("admin_delete_post",{p_token:TOKEN}); load(); }catch(e){ alertMsg(e.message); } };
+}
+function banDialog(who,args){
+  $("mbox").innerHTML=`<h3 style="margin:0">⛔ Бан: ${esc(who)}</h3>
+    <label>Срок<br><select id="bd">${DURS.map(d=>`<option value="${d[0]}"${d[0]===24?" selected":""}>${d[1]}</option>`).join("")}</select></label>
+    <label>Причина<br><select id="br">${REASONS.map(r=>`<option>${r}</option>`).join("")}<option value="__">Своя причина…</option></select></label>
+    <input id="brc" maxlength="300" placeholder="Напиши причину" style="display:none">
+    <div class="muted" style="font-size:13px">Человек увидит «Вы заблокированы создателем» и эту причину.</div>
+    <div class="row"><button class="bad" id="bgo">Забанить</button><button id="bno">Отмена</button></div><div class="msg" id="bmsg"></div>`;
+  $("modal").style.display="flex";
+  $("br").onchange=()=>{ $("brc").style.display=$("br").value==="__"?"":"none"; };
+  $("bno").onclick=()=>{ $("modal").style.display="none"; };
+  $("bgo").onclick=async()=>{
+    const reason=$("br").value==="__"?$("brc").value.trim():$("br").value; if(!reason){ $("bmsg").textContent="Укажи причину"; return; }
+    try{ await rpc("admin_ban",Object.assign({p_token:TOKEN,p_hours:+$("bd").value,p_reason:reason},args)); $("modal").style.display="none"; load(); }catch(e){ $("bmsg").textContent=e.message; }
+  };
+}
+function alertMsg(t){ $("mbox").innerHTML=`<div>${esc(t)}</div><button onclick="document.getElementById('modal').style.display='none'">OK</button>`; $("modal").style.display="flex"; }
+load();
+</script>
+</body>
+</html>
