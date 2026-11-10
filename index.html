@@ -424,14 +424,13 @@
 <div id="authScreen" class="modal" style="display:none">
   <div class="mbox">
     <div class="logo" style="font-size:22px;margin-bottom:6px">🏢 Руф<span>·</span>КЛД</div>
-    <p class="msub">Чтобы пользоваться сайтом, войди или создай аккаунт</p>
-    <div class="atabs"><button data-m="reg" class="on">Регистрация</button><button data-m="login">Вход</button></div>
+    <p class="msub" id="aSub">Введи ник и пароль. Есть аккаунт — войдёшь, нет — создадим новый 👌</p>
     <form id="authForm" autocomplete="on">
       <input id="aNick" maxlength="20" placeholder="Ник (3–20 символов)" autocomplete="username" required>
       <input id="aPass" type="password" maxlength="72" placeholder="Пароль (от 6 символов)" autocomplete="current-password" required>
       <input id="aPass2" type="password" maxlength="72" placeholder="Повтори пароль" autocomplete="new-password">
       <label id="aRulesRow" class="arules"><input type="checkbox" id="aRules"> Я прочитал и принимаю <a href="#" data-rules>правила сайта</a></label>
-      <button id="aSubmit" type="submit">Создать аккаунт</button>
+      <button id="aSubmit" type="submit">Продолжить</button>
       <div class="amsg" id="aMsg"></div>
     </form>
   </div>
@@ -931,38 +930,36 @@ function showBan(reason,until){
   try{ $("authScreen").style.display="none"; }catch(e){}
 }
 // ---------- Экран входа / регистрации ----------
-let authMode="reg";
-function showAuth(){ $("authScreen").style.display="flex"; document.body.style.overflow="hidden"; setAuthMode(localStorage.getItem("roof_nick")?"login":"reg"); }
+let authMode="auth";
+function showAuth(){ $("authScreen").style.display="flex"; document.body.style.overflow="hidden"; setAuthMode("auth"); try{ const n=localStorage.getItem("roof_nick"); if(n&&!$("aNick").value) $("aNick").value=n; }catch(e){} }
 function hideAuth(){ $("authScreen").style.display="none"; document.body.style.overflow=""; }
-function setAuthMode(m){ authMode=m; document.querySelectorAll("#authScreen .atabs button").forEach(b=>b.classList.toggle("on",b.dataset.m===m));
-  $("aPass2").style.display=$("aRulesRow").style.display=m==="reg"?"":"none"; $("aSubmit").textContent=m==="reg"?"Создать аккаунт":"Войти"; $("aMsg").textContent=""; }
-document.querySelectorAll("#authScreen .atabs button").forEach(b=>b.onclick=()=>setAuthMode(b.dataset.m));
+function setAuthMode(m){ authMode=m; const isNew=m==="new";
+  $("aPass2").style.display=$("aRulesRow").style.display=isNew?"":"none";
+  $("aSubmit").textContent=isNew?"Создать аккаунт":"Продолжить";
+  $("aSub").innerHTML=isNew?`Ника <b>${esc($("aNick").value.trim())}</b> ещё нет — создаём новый аккаунт. Повтори пароль и прими правила:`:"Введи ник и пароль. Есть аккаунт — войдёшь, нет — создадим новый 👌";
+  $("aMsg").textContent=""; if(isNew) $("aPass2").focus(); }
+$("aNick").addEventListener("input",()=>{ if(authMode==="new") setAuthMode("auth"); });
 $("authForm").addEventListener("submit",async e=>{
   e.preventDefault();
-  const nick=$("aNick").value.trim(), pass=$("aPass").value;
-  if(authMode==="reg"&&pass!==$("aPass2").value){ $("aMsg").textContent="Пароли не совпадают"; return; }
-  if(authMode==="reg"&&!$("aRules").checked){ $("aMsg").textContent="Прочитай правила и поставь галочку"; return; }
+  const nick=$("aNick").value.trim(), pass=$("aPass").value, isNew=authMode==="new";
+  if(isNew&&pass!==$("aPass2").value){ $("aMsg").textContent="Пароли не совпадают"; return; }
+  if(isNew&&!$("aRules").checked){ $("aMsg").textContent="Прочитай правила и поставь галочку"; return; }
   $("aSubmit").disabled=true; $("aMsg").textContent="Секунду…";
+  const slow=setTimeout(()=>{ $("aMsg").textContent="Сервер долго отвечает, жду… (плохая связь)"; },5000);
   try{
-    const slow=setTimeout(()=>{ $("aMsg").textContent="Сервер долго отвечает, жду… (плохая связь)"; },5000);
     let r;
-    try{
-      r=authMode==="reg"? await rpc("register_user",{p_nick:nick,p_pass:pass,p_rules:true},30000) : await rpc("login_user",{p_nick:nick,p_pass:pass},30000);
-    }catch(e1){
-      // ответ мог потеряться по дороге, а аккаунт уже создан — пробуем просто войти
-      const lost=e1.name==="AbortError"||/fetch|network|сеть|таймаут/i.test(e1.message);
-      const taken=authMode==="reg"&&/занят/.test(e1.message);
-      if(!lost&&!taken){ clearTimeout(slow); throw e1; }
-      $("aMsg").textContent="Пробую войти…";
-      r=await rpc("login_user",{p_nick:nick,p_pass:pass},30000).catch(e2=>{ throw (taken?e1:new Error("Нет связи с сервером. Если аккаунт уже создавался — нажми «Вход» с тем же ником и паролем. Если не помогает — попробуй Wi-Fi или другую сеть: некоторые мобильные операторы тормозят наш сервер.")); });
-      if(r&&r.error){ clearTimeout(slow); throw (taken?e1:new Error(r.error)); }
+    try{ r=await rpc("auth_user",{p_nick:nick,p_pass:pass,p_rules:isNew},30000); }
+    catch(e1){
+      if(!(e1.name==="AbortError"||/fetch|network|таймаут/i.test(e1.message))) throw e1;
+      $("aMsg").textContent="Ответ потерялся, пробую ещё раз…";
+      r=await rpc("auth_user",{p_nick:nick,p_pass:pass,p_rules:false},30000).catch(()=>{ throw new Error("Нет связи с сервером. Попробуй Wi-Fi или другую сеть: некоторые мобильные операторы тормозят наш сервер."); });
     }
-    clearTimeout(slow);
-    if(r.error) throw new Error(/Неверный ник/.test(r.error)&&authMode==="login"?"Неверный ник или пароль. Если ты тут впервые — сначала нажми вкладку «Регистрация» сверху и создай аккаунт 👆":r.error);
-    setToken(r.token,r.nick); ME={nick:r.nick}; hideAuth(); onLogin(); toast("👋 Привет, "+r.nick+"!");
+    if(r.need_register){ setAuthMode("new"); return; }
+    if(r.error) throw new Error(r.error);
+    setToken(r.token,r.nick); ME={nick:r.nick}; hideAuth(); onLogin(); toast((r.created?"🎉 Аккаунт создан! Привет, ":"👋 Привет, ")+r.nick+"!");
     countVisit();
   }catch(err){ $("aMsg").textContent=err.message; }
-  $("aSubmit").disabled=false;
+  finally{ clearTimeout(slow); $("aSubmit").disabled=false; }
 });
 function onLogin(){
   $("meBox").innerHTML=`<span class="menick">👤 ${esc(ME.nick)}</span><a href="#" id="logout">Выйти</a>`;
