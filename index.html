@@ -495,7 +495,7 @@ const FALLBACK = [
   {street:"улица Генерала Челнокова", num:"27", lv:17, name:"ЖК «Высота 56»"},
   {street:"улица Фрунзе", num:"75", lv:13, name:""}
 ].map(function(b,i){ return Object.assign({},b,{id:"fb/"+i,fallback:true}); });
-const CACHE_KEY = "kgd_highrises_v2";
+const CACHE_KEY = "roof_buildings_v3";
 let all = [], pool = [], map, marker, lastId = null;
 
 const $ = id => document.getElementById(id);
@@ -530,10 +530,12 @@ function fetchT(url,ms,opts){
   });
 }
 async function loadBuildings(){
-  try{
-    const c = JSON.parse(localStorage.getItem(CACHE_KEY)||"null");
-    if(c && Date.now()-c.t < 7*864e5 && c.d.length) return c.d;
-  }catch(e){}
+  // свежий список всегда в приоритете; кэш — только если сеть не ответила
+  let cached=null;
+  try{ const c=JSON.parse(localStorage.getItem(CACHE_KEY)||"null"); if(c&&c.d&&c.d.length) cached=c.d; }catch(e){}
+  try{ return await loadFresh(); }catch(e){ if(cached) return cached; throw e; }
+}
+async function loadFresh(){
   const errs=[], t0=Date.now();
   const tick=setInterval(()=>{ const el=$("sec"); if(el) el.textContent=Math.round((Date.now()-t0)/1000)+" с"; },500);
   const status=txt=>$("slot").innerHTML=`${txt} <span id="sec" style="color:var(--muted);margin-left:8px">0 с</span>`;
@@ -598,6 +600,8 @@ function applyFilter(){
   });
   $("count").textContent = `в барабане: ${pool.length}`;
   $("spin").disabled = !pool.length;
+  $("spin").textContent = pool.length ? "🎰 Крутить" : "Пусто по фильтру";
+  if(!pool.length) $("slot").textContent = "Под такой фильтр ничего нет — поменяй «Что», «Где» или этажи 🙂";
 }
 
 const label = b => b.street ? `${b.street}${b.num?", "+b.num:""}` : (b.name||"без адреса");
