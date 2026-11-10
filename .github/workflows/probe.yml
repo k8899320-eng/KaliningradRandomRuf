@@ -18,7 +18,7 @@ jobs:
           def api(params):
               u="https://commons.wikimedia.org/w/api.php?"+urllib.parse.urlencode(params)
               return json.load(urllib.request.urlopen(urllib.request.Request(u,headers=UA),timeout=60))
-          qs=["Kaliningrad view from roof","Kaliningrad rooftop view","view from House of Soviets Kaliningrad","Kaliningrad from height","Kaliningrad city view evening","Kaliningrad night city","Kaliningrad from above buildings","Kaliningrad Moskovsky prospekt view","Калининград с высоты","Калининград вид с крыши","Kaliningrad sunset","Kaliningrad residential district view"]
+          qs=["Kaliningrad 05-2017 aerial view","Kaliningrad 05-2017 img","intitle:Kaliningrad aerial view","Kaliningrad drone","Kaliningrad 2019 aerial","Kaliningrad Oktyabrsky island aerial","Kaliningrad Upper Pond aerial","Kaliningrad stadium aerial view city"]
           seen={}
           for q in qs:
               try:
