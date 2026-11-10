@@ -1,0 +1,18 @@
+name: vendor-three
+on: workflow_dispatch
+permissions:
+  contents: write
+jobs:
+  get:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          mkdir -p /tmp/t game/vendor && cd /tmp/t && npm pack three@0.170.0 --silent && tar xzf three-0.170.0.tgz
+          cp package/build/three.module.min.js $GITHUB_WORKSPACE/game/vendor/three.module.min.js
+          cp package/LICENSE $GITHUB_WORKSPACE/game/vendor/THREE-LICENSE.txt
+          ls -la $GITHUB_WORKSPACE/game/vendor
+      - run: |
+          git config user.name bot; git config user.email bot@users.noreply.github.com
+          git add game/vendor && git commit -qm "three.js r170 для 3D-игры (MIT)" && git push origin HEAD:main
