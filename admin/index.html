@@ -43,6 +43,14 @@
   .muted{color:var(--muted)}
   #modal{position:fixed;inset:0;background:rgba(0,0,0,.75);display:none;align-items:center;justify-content:center;padding:16px;z-index:10}
   #modal .box{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:18px;max-width:420px;width:100%;display:grid;gap:10px}
+  .kpis{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:8px;margin-bottom:10px}
+  .kpi{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:10px;text-align:center}
+  .kpi b{display:block;font-size:22px;color:var(--accent2)} .kpi span{font-size:12px;color:var(--muted)}
+  .bars{display:grid;grid-template-columns:repeat(14,1fr);gap:4px;height:140px;align-items:end}
+  .bar{height:100%;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;position:relative}
+  .bar i{display:block;width:100%;border-radius:5px 5px 2px 2px;min-height:2px}
+  .bar span{font-size:11px;color:var(--text);position:absolute;bottom:calc(100% - 14px)}
+  .bar em{font-style:normal;font-size:10px;color:var(--muted);margin-top:3px}
   #lb{position:fixed;inset:0;background:rgba(0,0,0,.9);display:none;align-items:center;justify-content:center;z-index:20;cursor:zoom-out}
   #lb img{max-width:96%;max-height:96%}
 </style>
@@ -58,7 +66,9 @@ const photoUrl=p=>`${SUPA}/storage/v1/object/public/roof-photos/${p}`;
 const $=id=>document.getElementById(id);
 const esc=s=>String(s==null?"":s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const dt=s=>s?new Date(s).toLocaleString("ru-RU",{day:"2-digit",month:"2-digit",year:"2-digit",hour:"2-digit",minute:"2-digit"}):"—";
-let TOKEN=null, NICK="", DATA=null, TAB="pending";
+let TOKEN=null, NICK="", DATA=null, TAB="stats", ADDR={};
+fetch("../buildings.json").then(r=>r.json()).then(j=>{ (j.buildings||[]).forEach(b=>ADDR[b.id]=b.street+", "+b.num); }).catch(()=>{});
+const addr=id=>ADDR[id]||id;
 try{ TOKEN=localStorage.getItem("roof_admin_token"); NICK=localStorage.getItem("roof_admin_nick")||""; }catch(e){}
 async function rpc(name,args){
   const r=await fetch(`${SUPA}/rest/v1/rpc/${name}`,{method:"POST",headers:{"apikey":KEY,"Content-Type":"application/json"},body:JSON.stringify(args||{})});
@@ -94,17 +104,17 @@ async function load(){
 }
 function render(){
   const d=DATA, banned=d.users.filter(u=>u.banned_until).length;
-  const tabs=[["pending","📷 Модерация",d.pending.length],["ankets","🤝 Анкеты",0],["users","👤 Пользователи",d.users.length],["guests","🌐 Все IP",d.guests.length],["bans","⛔ Баны",d.bans.length],["post","📣 Пост",d.post?1:0]];
+  const tabs=[["stats","📊 Статистика",0],["pending","📷 Модерация",d.pending.length],["ankets","🤝 Анкеты",0],["users","👤 Пользователи",d.users.length],["guests","🌐 Все IP",d.guests.length],["bans","⛔ Баны",d.bans.length],["post","📣 Пост",d.post?1:0]];
   $("app").innerHTML=`<header><h1>Админка <span>Руф·КЛД</span></h1><button onclick="load()">↻ Обновить</button><div class="me">👑 ${esc(NICK)} · <a href="#" id="lo" style="color:var(--muted)">выйти</a> · <a href="../" style="color:var(--muted)">на сайт</a></div></header>
     <div class="tabs">${tabs.map(t=>`<button data-t="${t[0]}" class="${TAB===t[0]?"on":""}">${t[1]}${t[2]?`<span class="n">${t[2]}</span>`:""}</button>`).join("")}</div><div id="tab"></div>`;
   $("lo").onclick=e=>{ e.preventDefault(); logout(); };
   document.querySelectorAll(".tabs button").forEach(b=>b.onclick=()=>{ TAB=b.dataset.t; render(); });
-  ({pending:tabPending,ankets:tabAnkets,users:tabUsers,guests:tabGuests,bans:tabBans,post:tabPost})[TAB]();
+  ({stats:tabStats,pending:tabPending,ankets:tabAnkets,users:tabUsers,guests:tabGuests,bans:tabBans,post:tabPost})[TAB]();
 }
 function tabPending(){
   const L=DATA.pending;
   $("tab").innerHTML=L.length?`<div class="grid">${L.map(c=>`<div class="card"><div class="ph"><img src="${photoUrl(c.photo)}" data-full="${photoUrl(c.photo)}" loading="lazy"></div>
-    <div class="meta"><b style="color:var(--accent2)">${esc(c.author)}</b> · ${dt(c.created_at)} · дом ${esc(c.house_id)}</div>
+    <div class="meta"><b style="color:var(--accent2)">${esc(c.author)}</b> · ${dt(c.created_at)} · ${esc(addr(c.house_id))}</div>
     ${c.body&&c.body!=="📷"?`<div style="margin-bottom:8px">${esc(c.body)}</div>`:""}
     <div class="row"><button class="ok" data-ap="${c.id}">✅ Одобрить</button><button class="bad" data-rj="${c.id}">❌ Отклонить</button><button data-del="${c.id}">🗑 Удалить комментарий</button></div></div>`).join("")}</div>`
     :`<div class="empty">🎉 Нет фото на модерации</div>`;
@@ -119,6 +129,30 @@ function tabPending(){
       load();
     }catch(err){ alertMsg(err.message); }
   };
+}
+async function tabStats(){
+  $("tab").innerHTML='<div class="empty">Загружаю…</div>';
+  let S; try{ S=await rpc("admin_stats",{p_token:TOKEN}); }catch(e){ $("tab").innerHTML=`<div class="empty">${esc(e.message)}</div>`; return; }
+  const T=S.totals, days=S.days||[];
+  const kpi=[["👥","Посетителей",T.visitors],["👤","Аккаунтов",T.users],["📷","Фото",T.photos],["⏳","На модерации",T.pending],["💬","Комментариев",T.comments],["❤️","Лайков",T.likes],["✅","Отметок «был»",T.been],["🤝","Анкет",T.ankets],["⛔","Активных банов",T.bans]];
+  const chart=(key,title,color)=>{ const mx=Math.max(1,...days.map(d=>d[key]));
+    return `<div class="card"><div class="muted" style="margin-bottom:8px">${title} за 14 дней</div><div class="bars">${days.map(d=>`<div class="bar" title="${new Date(d.day).toLocaleDateString("ru-RU",{day:"numeric",month:"short"})}: ${d[key]}"><i style="height:${Math.round(d[key]/mx*100)}%;background:${color}"></i><span>${d[key]||""}</span><em>${new Date(d.day).getDate()}</em></div>`).join("")}</div></div>`; };
+  const tg=S.tg||{};
+  $("tab").innerHTML=`<div class="kpis">${kpi.map(k=>`<div class="kpi"><div>${k[0]}</div><b>${k[2]}</b><span>${k[1]}</span></div>`).join("")}</div>
+    ${chart("visitors","Новые посетители","#7dd3fc")}${chart("regs","Регистрации","#ffb03d")}${chart("comments","Комментарии","#7dff7a")}
+    <div class="card"><div class="muted" style="margin-bottom:8px">🔥 Самые популярные дома (комментарии + отметки)</div>${(S.top_houses||[]).length?S.top_houses.map((h,i)=>`<div class="row" style="justify-content:space-between;padding:4px 0;border-bottom:1px solid var(--line)"><span>${i+1}. ${esc(addr(h.house_id))}</span><b>${h.n}</b></div>`).join(""):'<div class="muted">Пока пусто</div>'}</div>
+    <div class="card"><b>📲 Уведомления в Telegram о новых фото на модерации</b>
+      <div class="muted" style="margin:6px 0 10px;font-size:14px">${tg.chat?"✅ Подключено — новые фото будут приходить тебе в Telegram.":tg.bot?"⏳ Токен сохранён, осталось подтвердить чат (шаг 3–4).":"Не подключено."}</div>
+      ${tg.chat?`<button class="bad" id="tgOff">Отключить</button>`:`<ol style="margin:0 0 10px 18px;padding:0;line-height:1.6;font-size:14px">
+        <li>В Telegram открой <b>@BotFather</b> → /newbot → придумай имя и username бота.</li>
+        <li>BotFather пришлёт <b>токен</b> вида <span class="ip">123456789:AA…</span> — вставь его сюда и нажми «Сохранить».</li>
+        <li>Открой своего нового бота и нажми <b>«Старт»</b>.</li>
+        <li>Нажми «Проверить» — бот пришлёт тестовое сообщение.</li></ol>
+      <div class="row"><input id="tgTok" placeholder="Токен бота" style="flex:1;min-width:220px"><button id="tgSave">Сохранить</button><button class="pri" id="tgCheck">Проверить</button></div>`}
+      <div class="msg" id="tgMsg" style="color:var(--accent2)"></div></div>`;
+  if($("tgSave")) $("tgSave").onclick=async()=>{ try{ await rpc("admin_tg_connect",{p_token:TOKEN,p_bot:$("tgTok").value}); $("tgMsg").textContent="Токен сохранён. Теперь открой бота в Telegram, нажми «Старт» и потом «Проверить»."; }catch(e){ $("tgMsg").textContent=e.message; } };
+  if($("tgCheck")) $("tgCheck").onclick=async()=>{ $("tgMsg").textContent="Проверяю…"; try{ const r=await rpc("admin_tg_check",{p_token:TOKEN}); $("tgMsg").textContent=r.msg; if(r.ok) setTimeout(tabStats,1500); }catch(e){ $("tgMsg").textContent=e.message; } };
+  if($("tgOff")) $("tgOff").onclick=async()=>{ if(!confirm("Отключить уведомления в Telegram?")) return; await rpc("admin_tg_disconnect",{p_token:TOKEN}); tabStats(); };
 }
 async function tabAnkets(){
   $("tab").innerHTML='<div class="empty">Загружаю…</div>';
