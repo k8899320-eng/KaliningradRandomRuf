@@ -98,8 +98,7 @@ jobs:
           if all(b.get("d") for b in B):
               print("районы уже есть"); raise SystemExit(0)
           q = """[out:json][timeout:90];
-          area["name"="Калининград"]["boundary"="administrative"]["admin_level"~"^(4|6|8)$"]->.c;
-          rel(area.c)["boundary"="administrative"]["admin_level"="9"];
+          rel["boundary"="administrative"]["name"~"^(Ленинградский|Московский|Центральный) район$"](54.60,20.30,54.82,20.70);
           out geom;"""
           data = None
           for url in ["https://overpass-api.de/api/interpreter","https://overpass.private.coffee/api/interpreter","https://overpass.kumi.systems/api/interpreter"]:
@@ -114,7 +113,8 @@ jobs:
               name = rel.get("tags", {}).get("name", "")
               lines = [LineString([(p["lon"], p["lat"]) for p in m["geometry"]]) for m in rel.get("members", []) if m.get("type") == "way" and m.get("role") in ("outer", "") and m.get("geometry")]
               poly = unary_union(list(polygonize(unary_union(lines))))
-              if not poly.is_empty: polys.append((name.replace(" район", "").strip(), poly)); print("район:", name)
+              print("найдено:", name, rel.get("tags",{}).get("admin_level"), "линий:", len(lines), "пусто" if poly.is_empty else "ок")
+              if not poly.is_empty: polys.append((name.replace(" район", "").strip(), poly))
           n = 0
           for b in B:
               pt = Point(b["lon"], b["lat"])
