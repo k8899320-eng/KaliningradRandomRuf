@@ -97,13 +97,18 @@ function claimView(){
 }
 function logout(){ try{ rpc("logout_user",{p_token:TOKEN}); }catch(e){} TOKEN=null; localStorage.removeItem("roof_admin_token"); loginView(); }
 
+let ROLE="admin";
 async function load(){
   if(!TOKEN) return loginView();
+  try{ const me=await rpc("staff_me",{p_token:TOKEN}); ROLE=me.role; }catch(e){ ROLE="admin"; }
+  if(ROLE==="mod"){ try{ DATA=await rpc("mod_overview",{p_token:TOKEN}); DATA.bans=[]; DATA.guests=[]; try{ REPN=(await rpc("admin_reports",{p_token:TOKEN})).filter(r=>r.photo).length; }catch(e){ REPN=0; } if(!["pending","comments","reports","ankets","users"].includes(TAB)) TAB="pending"; render(); }
+    catch(e){ $("app").innerHTML=`<div class="center"><p>${esc(e.message)}</p></div>`; } return; }
   try{ DATA=await rpc("admin_overview",{p_token:TOKEN}); try{ REPN=(await rpc("admin_reports",{p_token:TOKEN})).filter(r=>r.photo).length; }catch(e){ REPN=0; } render(); }
   catch(e){ if(/Нет доступа/.test(e.message)){ const v=await rpc("register_visit",{p_token:TOKEN}).catch(()=>null); if(v&&v.user) return claimView(); return loginView("Сессия истекла, войди снова"); } $("app").innerHTML=`<div class="empty">Ошибка: ${esc(e.message)} <button onclick="load()">Повторить</button></div>`; }
 }
 function render(){
   const d=DATA, banned=d.users.filter(u=>u.banned_until).length;
+  if(ROLE==="mod") return renderMod();
   const tabs=[["stats","📊 Статистика",0],["pending","📷 Модерация",d.pending.length],["comments","💬 Комменты",0],["reports","🚩 Жалобы",REPN],["houses","🏢 Дома",0],["ankets","🤝 Анкеты",0],["users","👤 Пользователи",d.users.length],["guests","🌐 Все IP",d.guests.length],["bans","⛔ Баны",d.bans.length],["post","📣 Пост",d.post?1:0],["log","📜 Журнал",0]];
   $("app").innerHTML=`<header><h1>Админка <span>Руф·КЛД</span></h1><button onclick="load()">↻ Обновить</button><div class="me">👑 ${esc(NICK)} · <a href="#" id="lo" style="color:var(--muted)">выйти</a> · <a href="../" style="color:var(--muted)">на сайт</a></div></header>
     <div class="tabs">${tabs.map(t=>`<button data-t="${t[0]}" class="${TAB===t[0]?"on":""}">${t[1]}${t[2]?`<span class="n">${t[2]}</span>`:""}</button>`).join("")}</div><div id="tab"></div>`;
@@ -175,18 +180,22 @@ async function tabAnkets(){
 function tabUsers(){
   const q=UQ.toLowerCase(), L=DATA.users.filter(u=>!q||u.nick.toLowerCase().includes(q)||(u.last_ip||"").includes(q)||(u.reg_ip||"").includes(q));
   $("tab").innerHTML=`<div class="row" style="margin-bottom:10px"><input id="uq" placeholder="🔎 Ник или IP" value="${esc(UQ)}" style="flex:1"><span class="muted">${L.length} из ${DATA.users.length}</span></div>`+(L.length?`<div class="tablewrap"><table><tr><th>Ник</th><th>Последний IP</th><th>IP регистрации</th><th>Был</th><th>Комм.</th><th>Статус</th><th></th></tr>
-    ${L.map(u=>`<tr><td><b>${esc(u.nick)}</b>${u.is_admin?' <span class="tag adm">админ</span>':""}<div class="muted" style="font-size:12px">с ${dt(u.created_at)}</div></td>
+    ${L.map(u=>`<tr><td><b>${esc(u.nick)}</b>${u.is_admin?' <span class="tag adm">админ</span>':u.role==="mod"?' <span class="tag" style="background:#1f47c9;color:#fff">модер</span>':""}<div class="muted" style="font-size:12px">с ${dt(u.created_at)}</div></td>
       <td class="ip">${esc(u.last_ip||"—")}</td><td class="ip">${esc(u.reg_ip||"—")}</td><td>${dt(u.last_seen)}</td><td>${u.comments}</td>
       <td>${u.banned_until?`<span class="tag ban">бан ${u.banned_until==="infinity"||new Date(u.banned_until).getFullYear()>3000?"навсегда":"до "+dt(u.banned_until)}</span><div class="muted" style="font-size:12px">${esc(u.ban_reason||"")}</div>`:"✅"}</td>
       <td><div class="row">${u.is_admin?"":u.banned_until?`<button class="ok" data-unban="${u.id}">Разбанить</button>`:`<button class="bad" data-ban="${u.id}">⛔ Бан</button>`}
         <a href="../#u-${encodeURIComponent(u.nick)}" target="_blank" title="Профиль на сайте"><button>👁</button></a>
-        <button data-pw="${u.id}" title="Сбросить пароль">🔑</button>${u.is_admin?"":`<button data-purge="${u.id}" title="Удалить все его комментарии">🧹</button>`}</div></td></tr>`).join("")}</table></div>`
+        <button data-pw="${u.id}" title="Сбросить пароль">🔑</button>${u.is_admin?"":`<button data-role="${u.id}" data-r="${u.role==="mod"?"":"mod"}" title="${u.role==="mod"?"Снять модерку":"Сделать модератором"}">🛡${u.role==="mod"?"✕":""}</button>`}${u.is_admin?"":`<button data-purge="${u.id}" title="Удалить все его комментарии">🧹</button>`}</div></td></tr>`).join("")}</table></div>`
     :`<div class="empty">Никого не нашлось</div>`);
   $("uq").oninput=e=>{ UQ=e.target.value; const pos=e.target.selectionStart; tabUsers(); $("uq").focus(); $("uq").setSelectionRange(pos,pos); };
   $("tab").onclick=async e=>{
     const b=e.target.closest("[data-ban]"), ub=e.target.closest("[data-unban]");
     if(b){ const u=DATA.users.find(x=>x.id==b.dataset.ban); banDialog(`${u.nick} (IP ${u.last_ip||"?"})`,{p_user:u.id,p_ip:null}); }
     if(ub){ try{ await rpc("admin_unban",{p_token:TOKEN,p_user:+ub.dataset.unban,p_ip:null}); load(); }catch(err){ alertMsg(err.message); } }
+    const rl=e.target.closest("[data-role]");
+    if(rl){ const u=DATA.users.find(x=>x.id==rl.dataset.role), mk=rl.dataset.r==="mod";
+      if(!confirm(mk?`Сделать ${u.nick} модератором? Он сможет: одобрять/отклонять фото, удалять комменты и анкеты, разбирать жалобы, банить аккаунты до 7 дней. IP-адреса, посты, дома и настройки ему НЕ видны.`:`Снять модерку с ${u.nick}?`)) return;
+      try{ await rpc("admin_set_role",{p_token:TOKEN,p_user:u.id,p_role:mk?"mod":null}); load(); }catch(err){ alertMsg(err.message); } return; }
     const pw=e.target.closest("[data-pw]"), pg=e.target.closest("[data-purge]");
     if(pw){ const u=DATA.users.find(x=>x.id==pw.dataset.pw); if(!confirm(`Сбросить пароль для ${u.nick}? Его выкинет из аккаунта, а ты получишь новый пароль, чтобы передать ему.`)) return;
       try{ const r=await rpc("admin_reset_password",{p_token:TOKEN,p_user:u.id}); alertMsg(`Новый пароль для ${u.nick}: ${r.password}\n\nПередай ему лично и попроси сменить потом (пока смены нет — пусть просто помнит этот).`); }catch(err){ alertMsg(err.message); } }
@@ -283,6 +292,33 @@ async function tabLog(){
   let L=[]; try{ L=await rpc("admin_log_list",{p_token:TOKEN}); }catch(e){ $("tab").innerHTML=`<div class="empty">${esc(e.message)}</div>`; return; }
   $("tab").innerHTML=L.length?`<div class="tablewrap"><table><tr><th>Когда</th><th>Кто</th><th>Действие</th><th>Подробности</th></tr>${L.map(x=>`<tr><td style="white-space:nowrap">${dt(x.created_at)}</td><td>${esc(x.nick||"—")}</td><td>${esc(x.action)}</td><td class="muted">${esc(x.detail||"")}</td></tr>`).join("")}</table></div>`
     :'<div class="empty">Журнал пуст — сюда будут записываться баны, удаления, модерация и т.д.</div>';
+}
+// ---------- Режим модератора ----------
+function renderMod(){
+  const d=DATA, tabs=[["pending","📷 Модерация",d.pending.length],["comments","💬 Комменты",0],["reports","🚩 Жалобы",REPN],["ankets","🤝 Анкеты",0],["users","👤 Баны",0]];
+  $("app").innerHTML=`<header><h1>Модерка <span>Руф·КЛД</span></h1><button onclick="load()">↻ Обновить</button><div class="me">🛡 ${esc(NICK)} · <a href="#" id="lo" style="color:var(--muted)">выйти</a> · <a href="../" style="color:var(--muted)">на сайт</a></div></header>
+    <div class="muted" style="margin:-4px 0 12px;font-size:13px">Ты модератор: проверяй фото, удаляй мусор, разбирай жалобы. Бан — максимум на 7 дней, всё серьёзнее — к создателю (V1n41k). Все действия пишутся в журнал.</div>
+    <div class="tabs">${tabs.map(t=>`<button data-t="${t[0]}" class="${TAB===t[0]?"on":""}">${t[1]}${t[2]?`<span class="n">${t[2]}</span>`:""}</button>`).join("")}</div><div id="tab"></div>`;
+  $("lo").onclick=e=>{ e.preventDefault(); logout(); };
+  document.querySelectorAll(".tabs button").forEach(b=>b.onclick=()=>{ TAB=b.dataset.t; render(); });
+  ({pending:tabPending,comments:tabComments,reports:tabReports,ankets:tabAnkets,users:tabModUsers})[TAB]();
+}
+function tabModUsers(){
+  const q=UQ.toLowerCase(), L=DATA.users.filter(u=>!q||u.nick.toLowerCase().includes(q));
+  $("tab").innerHTML=`<div class="row" style="margin-bottom:10px"><input id="uq" placeholder="🔎 Ник" value="${esc(UQ)}" style="flex:1"></div>
+   <div class="tablewrap"><table><tr><th>Ник</th><th>Комм.</th><th>Статус</th><th></th></tr>
+   ${L.map(u=>`<tr><td><b>${esc(u.nick)}</b>${u.is_admin?' <span class="tag adm">админ</span>':u.role==="mod"?' <span class="tag">модер</span>':""}</td><td>${u.comments}</td>
+     <td>${u.banned_until?`<span class="tag ban">бан до ${new Date(u.banned_until).getFullYear()>3000?"навсегда":dt(u.banned_until)}</span><div class="muted" style="font-size:12px">${esc(u.ban_reason||"")}</div>`:'<span class="muted">ок</span>'}</td>
+     <td>${u.is_admin||u.role==="mod"?"":u.banned_until?`<button class="ok" data-mun="${u.id}">Разбанить</button>`:`<div class="row"><select id="mh${u.id}"><option value="1">1 час</option><option value="24" selected>1 день</option><option value="72">3 дня</option><option value="168">7 дней</option></select><button class="bad" data-mban="${u.id}">⛔ Бан</button></div>`}</td></tr>`).join("")}</table></div>`;
+  $("uq").oninput=e=>{ UQ=e.target.value; const pos=e.target.selectionStart; tabModUsers(); $("uq").focus(); $("uq").setSelectionRange(pos,pos); };
+  $("tab").onclick=async e=>{
+    const b=e.target.closest("[data-mban]"), ub=e.target.closest("[data-mun]");
+    try{
+      if(b){ const u=DATA.users.find(x=>x.id==b.dataset.mban); const why=prompt(`Причина бана для ${u.nick} (её увидит пользователь):`,"Нарушение правил сайта"); if(why===null) return;
+        await rpc("mod_ban",{p_token:TOKEN,p_user:u.id,p_hours:+$("mh"+u.id).value,p_reason:why}); load(); }
+      if(ub){ await rpc("mod_unban",{p_token:TOKEN,p_user:+ub.dataset.mun}); load(); }
+    }catch(err){ alertMsg(err.message); }
+  };
 }
 function tabGuests(){
   const nickByIp={}; DATA.users.forEach(u=>{ if(u.last_ip) (nickByIp[u.last_ip]=nickByIp[u.last_ip]||[]).push(u.nick); });
