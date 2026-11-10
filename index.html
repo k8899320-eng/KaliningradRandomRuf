@@ -70,7 +70,14 @@
   .filebtn{display:inline-flex;align-items:center;gap:6px;background:#1f2430;border:1px dashed #3a4256;border-radius:10px;padding:9px 12px;font-size:14px;cursor:pointer;color:#cfd5e1}
   .filebtn input{display:none}
   #pprev{display:none;align-items:center;gap:8px}
-  #pprev img{height:56px;border-radius:8px;border:1px solid #262c38}
+  #pprev{flex-wrap:wrap}
+  #pthumbs{display:flex;gap:6px;flex-wrap:wrap}
+  #pthumbs .pt{position:relative}
+  #pthumbs img{height:56px;width:56px;object-fit:cover;border-radius:8px;border:1px solid #262c38;display:block}
+  #pthumbs .px{position:absolute;top:-6px;right:-6px;width:20px;height:20px;border-radius:50%;border:0;background:#ff5d5d;color:#fff;font-size:12px;line-height:20px;padding:0;cursor:pointer}
+  .cgal{display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:6px}
+  .cgal img{width:100%;height:120px;object-fit:cover;max-height:none}
+  .cgal img:first-child:nth-last-child(2),.cgal img:first-child:nth-last-child(2)~img{height:160px}
   .confirm{font-size:13px;color:#cfd5e1;display:none;align-items:center;gap:6px}
   /* Тёмная карта: инвертируем светлые плитки OSM в «ночной» вид */
   #allmap .leaflet-tile-pane,#map .leaflet-tile-pane{filter:invert(1) hue-rotate(180deg) brightness(.82) contrast(.9) saturate(.35)}
@@ -347,8 +354,8 @@
         <div class="replyto" id="replyTo" style="display:none"></div>
         <textarea id="ctext" maxlength="500" placeholder="Что скажешь про этот дом? Вид, подъезд, охрана…"></textarea>
         <div class="pickrow">
-          <label class="filebtn">📷 Фото с крыши<input type="file" id="cfile" accept="image/*"></label>
-          <span id="pprev"><img id="pimg" alt=""><button type="button" class="rep" id="pdel">✕ убрать</button></span>
+          <label class="filebtn">📷 Фото с крыши <small style="opacity:.7">(до 6)</small><input type="file" id="cfile" accept="image/*" multiple></label>
+          <span id="pprev"><span id="pthumbs"></span><button type="button" class="rep" id="pdel">✕ убрать все</button></span>
         </div>
         <label class="confirm" id="pconf"><input type="checkbox" id="pok"> Это вид с крыши этого дома (не скрин и не случайное фото)</label>
         <input class="hp" id="cweb" tabindex="-1" aria-hidden="true" placeholder="website">
@@ -762,16 +769,17 @@ function setReply(id,nick){
 }
 function renderComments(list){
   $("ccount").textContent=list.length?`(${list.length})`:"";
-  const photos=list.filter(c=>c.photo).length; if(photos) $("ccount").textContent+=` · 📷 ${photos}`;
+  const photos=list.reduce((n,c)=>n+(c.photo?1+(c.photos||[]).length:0),0); if(photos) $("ccount").textContent+=` · 📷 ${photos}`;
   $("clist").innerHTML=list.length? list.map(c=>{
-    const ok=c.photo&&/^[a-z0-9\/_.-]{1,200}$/.test(c.photo);
-    const ph=ok?`<div class="cphoto"><img src="${photoUrl(c.photo)}" alt="Вид с крыши" loading="lazy" data-full="${photoUrl(c.photo)}">
+    const PH=[c.photo].concat(c.photos||[]).filter(x=>x&&/^[a-z0-9\/_.-]{1,200}$/.test(x)), ok=PH.length>0;
+    const imgs=PH.map(x=>`<img src="${photoUrl(x)}" alt="Вид с крыши" loading="lazy" data-full="${photoUrl(x)}">`).join("");
+    const ph=ok?`<div class="cphoto">${PH.length>1?`<div class="cgal">${imgs}</div>`:imgs}
       <div class="crow2"><button class="like${c.liked?" on":""}" data-like="${c.id}">${c.liked?"❤️":"🤍"} <span>${c.likes||0}</span></button><button class="rep" data-rep="${c.id}">🚩 Не с крыши / плохое фото</button></div></div>`:"";
     const pend=c.my_pending?`<div class="pend">⏳ Твоё фото на модерации — появится после проверки</div>`:"";
     const txt=(c.body&&c.body!=="📷")?`<div class="txt">${mentions(c.body)}</div>`:"";
     if(!txt&&!ph&&!pend) return "";
     const rm=c.reply_author?`<div class="rmark">↩ ответ <span class="nick" data-nick="${esc(c.reply_author)}">@${esc(c.reply_author)}</span></div>`:"";
-    return `<div class="citem"><div class="meta"><b class="nick" data-nick="${esc(c.author||"")}">${esc(c.author||"аноним")}</b> · ${fmtDate(c.created_at)}${ph?" · 📷 вид с крыши":""}</div>${rm}${txt}${ph}${pend}<button class="rbtn" data-reply="${c.id}" data-rnick="${esc(c.author||"")}">↩ Ответить</button></div>`;
+    return `<div class="citem"><div class="meta"><b class="nick" data-nick="${esc(c.author||"")}">${esc(c.author||"аноним")}</b> · ${fmtDate(c.created_at)}${ph?` · 📷 ${PH.length>1?PH.length+" фото":"вид с крыши"}`:""}</div>${rm}${txt}${ph}${pend}<button class="rbtn" data-reply="${c.id}" data-rnick="${esc(c.author||"")}">↩ Ответить</button></div>`;
   }).join("") : `<div class="cmsg">Пока никто ничего не написал. Будь первым — можно с фото с крыши 📷</div>`;
 }
 $("clist").addEventListener("click",async e=>{
@@ -803,44 +811,54 @@ $("cform").addEventListener("submit",async ev=>{
   if(!TOKEN){ showAuth(); return; }
   if($("cweb").value) return;
   const body=$("ctext").value.trim();
-  if(!body&&!pickedPhoto){ $("cmsg").textContent="Напиши что-нибудь или добавь фото 🙂"; return; }
-  if(pickedPhoto&&!$("pok").checked){ $("cmsg").textContent="Отметь галочку, что это вид с крыши этого дома"; return; }
+  if(!body&&!pickedPhotos.length){ $("cmsg").textContent="Напиши что-нибудь или добавь фото 🙂"; return; }
+  if(pickedPhotos.length&&!$("pok").checked){ $("cmsg").textContent="Отметь галочку, что это вид с крыши этого дома"; return; }
   const house=currentHouse;
   $("csend").disabled=true; $("cmsg").textContent="Отправляю…";
   try{
-    let photo=null;
-    if(pickedPhoto){
-      $("cmsg").textContent="Загружаю фото…";
+    const photos=[];
+    for(let i=0;i<pickedPhotos.length;i++){
+      $("cmsg").textContent=pickedPhotos.length>1?`Загружаю фото ${i+1} из ${pickedPhotos.length}…`:"Загружаю фото…";
       const path=house.toLowerCase().replace(/[^a-z0-9]/g,"-")+"/"+Date.now().toString(36)+"-"+Math.random().toString(36).slice(2,8)+".jpg";
-      const up=await fetchT(`${SUPA}/storage/v1/object/${PHOTO_BUCKET}/${path}`,30000,{method:"POST",headers:{"apikey":SUPABASE_KEY,"Content-Type":"image/jpeg","x-upsert":"false"},body:pickedPhoto});
-      if(!up.ok) throw new Error("фото не загрузилось");
-      photo=path;
+      const up=await fetchT(`${SUPA}/storage/v1/object/${PHOTO_BUCKET}/${path}`,30000,{method:"POST",headers:{"apikey":SUPABASE_KEY,"Content-Type":"image/jpeg","x-upsert":"false"},body:pickedPhotos[i]});
+      if(!up.ok) throw new Error(pickedPhotos.length>1?`фото ${i+1} не загрузилось`:"фото не загрузилось");
+      photos.push(path);
     }
-    const r=await rpc("post_comment",{p_token:TOKEN,p_house:house,p_body:body,p_photo:photo,p_reply_to:replyTo?replyTo.id:null});
+    const r=await rpc("post_comment2",{p_token:TOKEN,p_house:house,p_body:body,p_photos:photos.length?photos:null,p_reply_to:replyTo?replyTo.id:null});
     $("ctext").value=""; clearPhoto(); setReply(null);
-    $("cmsg").textContent=r&&r.photo_pending?"✅ Отправлено! Фото появится после проверки модератором":"✅ Отправлено";
+    $("cmsg").textContent=r&&r.photo_pending?`✅ Отправлено! ${photos.length>1?"Фото появятся":"Фото появится"} после проверки модератором`:"✅ Отправлено";
     if(currentHouse===house) loadComments({id:house});
   }catch(e){ $("cmsg").textContent="Не отправилось: "+(e.message==="Failed to fetch"?"нет связи с сервером":(e.message||e)); }
   finally{ $("csend").disabled=false; }
 });
 
-// ---------- Фото: выбор и сжатие ----------
-let pickedPhoto=null;
-function clearPhoto(){ pickedPhoto=null; $("cfile").value=""; $("pprev").style.display="none"; $("pconf").style.display="none"; $("pok").checked=false; }
+// ---------- Фото: выбор и сжатие (до 6 штук) ----------
+const MAXPH=6;
+let pickedPhotos=[];
+function renderPicked(){
+  $("pthumbs").innerHTML=pickedPhotos.map((b,i)=>`<span class="pt"><img src="${b._url}" alt=""><button type="button" class="px" data-px="${i}" title="Убрать">✕</button></span>`).join("");
+  const on=pickedPhotos.length>0; $("pprev").style.display=on?"inline-flex":"none"; $("pconf").style.display=on?"flex":"none"; if(!on) $("pok").checked=false;
+}
+function clearPhoto(){ pickedPhotos.forEach(b=>URL.revokeObjectURL(b._url)); pickedPhotos=[]; $("cfile").value=""; renderPicked(); }
 $("pdel").onclick=clearPhoto;
+$("pthumbs").addEventListener("click",e=>{ const x=e.target.closest("[data-px]"); if(!x) return; const b=pickedPhotos.splice(+x.dataset.px,1)[0]; if(b) URL.revokeObjectURL(b._url); renderPicked(); });
+async function shrink(f){
+  const url=URL.createObjectURL(f), img=new Image();
+  try{ await new Promise((ok,bad)=>{ img.onload=ok; img.onerror=bad; img.src=url; }); } finally{ setTimeout(()=>URL.revokeObjectURL(url),0); }
+  const k=Math.min(1,1600/Math.max(img.width,img.height)), c=document.createElement("canvas");
+  c.width=Math.round(img.width*k); c.height=Math.round(img.height*k);
+  c.getContext("2d").drawImage(img,0,0,c.width,c.height);
+  const blob=await new Promise(ok=>c.toBlob(ok,"image/jpeg",.82)); blob._url=URL.createObjectURL(blob); return blob;
+}
 $("cfile").addEventListener("change",async()=>{
-  const f=$("cfile").files[0]; if(!f) return;
-  if(!/^image\//.test(f.type)){ $("cmsg").textContent="Это не картинка"; clearPhoto(); return; }
-  $("cmsg").textContent="Готовлю фото…";
-  try{
-    const url=URL.createObjectURL(f), img=new Image();
-    await new Promise((ok,bad)=>{ img.onload=ok; img.onerror=bad; img.src=url; });
-    const k=Math.min(1,1600/Math.max(img.width,img.height)), c=document.createElement("canvas");
-    c.width=Math.round(img.width*k); c.height=Math.round(img.height*k);
-    c.getContext("2d").drawImage(img,0,0,c.width,c.height); URL.revokeObjectURL(url);
-    pickedPhoto=await new Promise(ok=>c.toBlob(ok,"image/jpeg",.82));
-    $("pimg").src=URL.createObjectURL(pickedPhoto); $("pprev").style.display="inline-flex"; $("pconf").style.display="flex"; $("cmsg").textContent="";
-  }catch(e){ $("cmsg").textContent="Не получилось открыть фото"; clearPhoto(); }
+  const files=[...$("cfile").files]; $("cfile").value=""; if(!files.length) return;
+  const room=MAXPH-pickedPhotos.length;
+  if(room<=0){ $("cmsg").textContent=`Максимум ${MAXPH} фото в одном сообщении`; return; }
+  const take=files.filter(f=>/^image\//.test(f.type)).slice(0,room);
+  $("cmsg").textContent="Готовлю фото…"; let bad=0;
+  for(const f of take){ try{ pickedPhotos.push(await shrink(f)); }catch(e){ bad++; } }
+  renderPicked();
+  $("cmsg").textContent=(files.length>take.length?`Взял первые ${take.length} — максимум ${MAXPH} фото. `:"")+(bad?`Не открылось: ${bad}`:"");
 });
 
 // ---------- Избранное, история, поделиться ----------

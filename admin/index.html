@@ -111,10 +111,11 @@ function render(){
   document.querySelectorAll(".tabs button").forEach(b=>b.onclick=()=>{ TAB=b.dataset.t; render(); });
   ({stats:tabStats,pending:tabPending,comments:tabComments,reports:tabReports,houses:tabHouses,ankets:tabAnkets,users:tabUsers,guests:tabGuests,bans:tabBans,post:tabPost,log:tabLog})[TAB]();
 }
+function extra(c){ return c.photos&&c.photos.length?`<div style="display:flex;gap:6px;flex-wrap:wrap;margin:6px 0">${c.photos.map(x=>`<img src="${photoUrl(x)}" data-full="${photoUrl(x)}" loading="lazy" style="width:72px;height:72px;object-fit:cover;border-radius:8px;cursor:zoom-in">`).join("")}</div>`:""; }
 function tabPending(){
   const L=DATA.pending;
-  $("tab").innerHTML=L.length?`<div class="grid">${L.map(c=>`<div class="card"><div class="ph"><img src="${photoUrl(c.photo)}" data-full="${photoUrl(c.photo)}" loading="lazy"></div>
-    <div class="meta"><b style="color:var(--accent2)">${esc(c.author)}</b> · ${dt(c.created_at)} · ${esc(addr(c.house_id))}</div>
+  $("tab").innerHTML=L.length?`<div class="grid">${L.map(c=>`<div class="card"><div class="ph"><img src="${photoUrl(c.photo)}" data-full="${photoUrl(c.photo)}" loading="lazy"></div>${extra(c)}
+    <div class="meta"><b style="color:var(--accent2)">${esc(c.author)}</b> · ${dt(c.created_at)} · ${esc(addr(c.house_id))}${c.photos&&c.photos.length?` · <b>📷 ${c.photos.length+1} фото</b> (одобряются все сразу)`:""}</div>
     ${c.body&&c.body!=="📷"?`<div style="margin-bottom:8px">${esc(c.body)}</div>`:""}
     <div class="row"><button class="ok" data-ap="${c.id}">✅ Одобрить</button><button class="bad" data-rj="${c.id}">❌ Отклонить</button><button data-del="${c.id}">🗑 Удалить комментарий</button></div></div>`).join("")}</div>`
     :`<div class="empty">🎉 Нет фото на модерации</div>`;
@@ -203,7 +204,7 @@ async function tabComments(){
       ${c.photo?`<img src="${photoUrl(c.photo)}" data-full="${photoUrl(c.photo)}" loading="lazy" style="width:84px;height:84px;object-fit:cover;border-radius:10px;cursor:zoom-in;flex:none">`:""}
       <div style="flex:1;min-width:0"><div class="meta" style="margin-top:0"><b style="color:var(--accent2)">${esc(c.author)}</b> · ${dt(c.created_at)} · <a href="../#h-${esc(c.house_id.replace("/","-"))}" target="_blank" style="color:var(--muted)">${esc(addr(c.house_id))}</a>
         ${c.photo?` · <span class="tag">${{approved:"✅ фото",pending:"⏳ на модерации",rejected:"❌ отклонено"}[c.photo_status]||c.photo_status}</span>`:""}${c.likes?` · ❤️ ${c.likes}`:""}${c.reports?` · <span class="tag ban">🚩 ${c.reports}</span>`:""}${c.reply_to?" · ↩ ответ":""}</div>
-        <div style="word-break:break-word">${c.body&&c.body!=="📷"?esc(c.body):'<span class="muted">(только фото)</span>'}</div></div>
+        <div style="word-break:break-word">${c.body&&c.body!=="📷"?esc(c.body):'<span class="muted">(только фото)</span>'}</div>${extra(c)}</div>
       <button class="bad" data-del="${c.id}" title="Удалить">🗑</button></div>`).join(""):'<div class="empty">Ничего не найдено</div>';
   };
   $("cgo2").onclick=go; $("cq").onkeydown=e=>{ if(e.key==="Enter") go(); };
@@ -219,7 +220,7 @@ async function tabReports(){
   $("tab").innerHTML='<div class="empty">Загружаю…</div>';
   let L=[]; try{ L=await rpc("admin_reports",{p_token:TOKEN}); }catch(e){ $("tab").innerHTML=`<div class="empty">${esc(e.message)}</div>`; return; }
   $("tab").innerHTML=`<div class="muted" style="margin-bottom:10px">После 3 жалоб фото само уходит обратно на модерацию (скрывается с сайта).</div>`+(L.length?`<div class="grid">${L.map(c=>`<div class="card">
-    ${c.photo?`<div class="ph"><img src="${photoUrl(c.photo)}" data-full="${photoUrl(c.photo)}" loading="lazy"></div>`:'<div class="empty">фото уже удалено</div>'}
+    ${c.photo?`<div class="ph"><img src="${photoUrl(c.photo)}" data-full="${photoUrl(c.photo)}" loading="lazy"></div>${extra(c)}`:'<div class="empty">фото уже удалено</div>'}
     <div class="meta"><span class="tag ban">🚩 ${c.n}</span> · <b style="color:var(--accent2)">${esc(c.author)}</b> · ${esc(addr(c.house_id))} · ${c.photo_status==="approved"?"✅ на сайте":"⏳ скрыто"}</div>
     <div class="meta">Пожаловались: ${esc(c.who||"")}</div>
     <div class="row"><button class="ok" data-keep="${c.id}">✅ Оставить фото</button><button class="bad" data-rj="${c.id}">❌ Убрать фото</button><button data-del="${c.id}">🗑 Удалить коммент</button></div></div>`).join("")}</div>`:'<div class="empty">🎉 Жалоб нет</div>');
