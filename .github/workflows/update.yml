@@ -83,6 +83,47 @@ jobs:
           print("домов:", len(out))
           EOF
 
+      - name: Определить районы домов
+        if: hashFiles('buildings.json') != ''
+        timeout-minutes: 6
+        continue-on-error: true
+        run: |
+          pip install --quiet shapely
+          python3 - <<'EOF'
+          import json, urllib.parse, urllib.request
+          from shapely.geometry import LineString, Point
+          from shapely.ops import polygonize, unary_union
+          d = json.load(open("buildings.json"))
+          B = d["buildings"]
+          if all(b.get("d") for b in B):
+              print("районы уже есть"); raise SystemExit(0)
+          q = """[out:json][timeout:90];
+          area["name"="Калининград"]["boundary"="administrative"]["admin_level"~"^(4|6|8)$"]->.c;
+          rel(area.c)["boundary"="administrative"]["admin_level"="9"];
+          out geom;"""
+          data = None
+          for url in ["https://overpass-api.de/api/interpreter","https://overpass.private.coffee/api/interpreter","https://overpass.kumi.systems/api/interpreter"]:
+              try:
+                  req = urllib.request.Request(url, data=urllib.parse.urlencode({"data": q}).encode(), headers={"User-Agent": "roof-randomizer-kaliningrad"})
+                  with urllib.request.urlopen(req, timeout=100) as r: data = json.load(r)
+                  print("OK", url); break
+              except Exception as e: print("FAIL", url, e)
+          if not data: raise SystemExit("нет границ районов")
+          polys = []
+          for rel in data["elements"]:
+              name = rel.get("tags", {}).get("name", "")
+              lines = [LineString([(p["lon"], p["lat"]) for p in m["geometry"]]) for m in rel.get("members", []) if m.get("type") == "way" and m.get("role") in ("outer", "") and m.get("geometry")]
+              poly = unary_union(list(polygonize(unary_union(lines))))
+              if not poly.is_empty: polys.append((name.replace(" район", "").strip(), poly)); print("район:", name)
+          n = 0
+          for b in B:
+              pt = Point(b["lon"], b["lat"])
+              for name, poly in polys:
+                  if poly.contains(pt): b["d"] = name; n += 1; break
+          json.dump(d, open("buildings.json", "w"), ensure_ascii=False, separators=(",", ":"))
+          print("районы назначены:", n, "из", len(B))
+          EOF
+
       - name: Собрать сайт
         run: |
           mkdir -p _site
