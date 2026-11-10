@@ -95,7 +95,7 @@ jobs:
           from shapely.ops import polygonize, unary_union
           d = json.load(open("buildings.json"))
           B = d["buildings"]
-          if all(b.get("d") for b in B):
+          if all("d" in b for b in B):
               print("районы уже есть"); raise SystemExit(0)
           q = """[out:json][timeout:90];
           rel["boundary"="administrative"]["name"~"^(Ленинградский|Московский|Центральный) район$"](54.60,20.30,54.82,20.70);
@@ -118,6 +118,7 @@ jobs:
           n = 0
           for b in B:
               pt = Point(b["lon"], b["lat"])
+              b["d"] = ""
               for name, poly in polys:
                   if poly.contains(pt): b["d"] = name; n += 1; break
           json.dump(d, open("buildings.json", "w"), ensure_ascii=False, separators=(",", ":"))
