@@ -443,7 +443,7 @@
   <span><a href="#" data-rules>📜 Правила сайта</a></span>
   <span class="creator">Создатель: <b>V1n41k</b> · ✉️ <a href="mailto:k8899320@gmail.com">k8899320@gmail.com</a></span><span>Данные: © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a>, фото: Wikimedia Commons и пользователи</span>
   <span style="flex-basis:100%;font-size:12px;opacity:.7">Для подсчёта посетителей и защиты от нарушителей сайт сохраняет IP-адрес. Он не публикуется.</span>
-  <span style="flex-basis:100%;font-size:12px;opacity:.7">Фото на фоне (Wikimedia Commons): «Old cathedral of Kaliningrad» — Gumerov Ildar, <a href="https://commons.wikimedia.org/wiki/File:Old_cathedral_of_Kaliningrad_in_Russia.jpg" target="_blank" rel="noopener">общественное достояние</a>; «Kaliningrad aerial view» — A.Savin, <a href="https://commons.wikimedia.org/wiki/File:Kaliningrad_05-2017_img10_aerial_view.jpg" target="_blank" rel="noopener">FAL</a>; «Kaliningrad Panorama» — Dima Bushkov, <a href="https://commons.wikimedia.org/wiki/File:Kaliningrad_Panorama_(5664122123).jpg" target="_blank" rel="noopener">CC BY 2.0</a>.</span></footer>
+  <span style="flex-basis:100%;font-size:12px;opacity:.7">Фото на фоне (Wikimedia Commons): «Old cathedral of Kaliningrad» — Gumerov Ildar, <a href="https://commons.wikimedia.org/wiki/File:Old_cathedral_of_Kaliningrad_in_Russia.jpg" target="_blank" rel="noopener">общественное достояние</a>; «Kaliningrad aerial view» — A.Savin, <a href="https://commons.wikimedia.org/wiki/File:Kaliningrad_05-2017_img10_aerial_view.jpg" target="_blank" rel="noopener">FAL</a>; «Kaliningrad Panorama» — Dima Bushkov, <a href="https://commons.wikimedia.org/wiki/File:Kaliningrad_Panorama_(5664122123).jpg" target="_blank" rel="noopener">CC BY 2.0</a>; «Baltiysk aerial photo» — A.Savin, <a href="https://commons.wikimedia.org/wiki/File:BaltiyskPillau_05-2017_img07_aerial_photo.jpg" target="_blank" rel="noopener">FAL</a>.</span></footer>
   </div>
 </div>
 <div class="toast" id="toast"></div>
@@ -1174,17 +1174,20 @@ async function initBg(){
   const slides=[
     {f:"hero1",who:"Gumerov Ildar",lic:"общественное достояние",url:"https://commons.wikimedia.org/wiki/File:Old_cathedral_of_Kaliningrad_in_Russia.jpg"},
     {f:"hero2",who:"A.Savin",lic:"FAL",url:"https://commons.wikimedia.org/wiki/File:Kaliningrad_05-2017_img10_aerial_view.jpg"},
-    {f:"hero3",who:"Dima Bushkov",lic:"CC BY 2.0",url:"https://commons.wikimedia.org/wiki/File:Kaliningrad_Panorama_(5664122123).jpg"}];
+    {f:"hero3",who:"Dima Bushkov",lic:"CC BY 2.0",url:"https://commons.wikimedia.org/wiki/File:Kaliningrad_Panorama_(5664122123).jpg"},
+    {f:"bg-roof",who:"A.Savin",lic:"FAL",url:"https://commons.wikimedia.org/wiki/File:BaltiyskPillau_05-2017_img07_aerial_photo.jpg"}];
+  const TOP=3, DEEP=3; // первые 3 — слайд-шоу наверху, последний — фон всей остальной страницы
   box.innerHTML=slides.map((x,i)=>`<div class="bgp${i?"":" on"}" style="background-image:url('assets/${x.f}${small?"-m":""}.jpg')"></div>`).join("");
   const cred=i=>{ const x=slides[i]; $("bgcred").style.display=""; $("bgcred").innerHTML=`Фото: ${esc(x.who)} · <a href="${x.url}" target="_blank" rel="noopener">${x.lic}</a>`; };
   cred(0);
-  if(matchMedia("(prefers-reduced-motion: reduce)").matches) return;
   let k=0; const els=box.querySelectorAll(".bgp");
   const show=i=>{ if(i===k) return; els[k].classList.remove("on"); k=i; els[k].classList.add("on"); cred(k); };
   // ниже первого экрана — всегда один вид с крыши (черепица + собор), слайд-шоу только наверху
+  let topK=0;
   const below=()=>window.scrollY>innerHeight*0.6;
-  addEventListener("scroll",()=>{ if(below()) show(0); },{passive:true});
-  setInterval(()=>{ if(document.hidden||below()) return; show((k+1)%els.length); },10000);
+  const sync=()=>{ if(below()) show(DEEP); else show(topK); };
+  addEventListener("scroll",sync,{passive:true}); sync();
+  if(!matchMedia("(prefers-reduced-motion: reduce)").matches) setInterval(()=>{ if(document.hidden||below()) return; topK=(topK+1)%TOP; show(topK); },10000);
 }
 initBg();
 
