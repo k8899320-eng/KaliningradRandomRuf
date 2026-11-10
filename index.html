@@ -906,7 +906,20 @@ $("authForm").addEventListener("submit",async e=>{
   if(authMode==="reg"&&!$("aRules").checked){ $("aMsg").textContent="Прочитай правила и поставь галочку"; return; }
   $("aSubmit").disabled=true; $("aMsg").textContent="Секунду…";
   try{
-    const r=authMode==="reg"? await rpc("register_user",{p_nick:nick,p_pass:pass,p_rules:true}) : await rpc("login_user",{p_nick:nick,p_pass:pass});
+    const slow=setTimeout(()=>{ $("aMsg").textContent="Сервер долго отвечает, жду… (плохая связь)"; },5000);
+    let r;
+    try{
+      r=authMode==="reg"? await rpc("register_user",{p_nick:nick,p_pass:pass,p_rules:true},30000) : await rpc("login_user",{p_nick:nick,p_pass:pass},30000);
+    }catch(e1){
+      // ответ мог потеряться по дороге, а аккаунт уже создан — пробуем просто войти
+      const lost=e1.name==="AbortError"||/fetch|network|сеть|таймаут/i.test(e1.message);
+      const taken=authMode==="reg"&&/занят/.test(e1.message);
+      if(!lost&&!taken){ clearTimeout(slow); throw e1; }
+      $("aMsg").textContent="Пробую войти…";
+      r=await rpc("login_user",{p_nick:nick,p_pass:pass},30000).catch(e2=>{ throw (taken?e1:new Error("Нет связи с сервером. Если аккаунт уже создавался — нажми «Вход» с тем же ником и паролем. Если не помогает — попробуй Wi-Fi или другую сеть: некоторые мобильные операторы тормозят наш сервер.")); });
+      if(r&&r.error){ clearTimeout(slow); throw (taken?e1:new Error(r.error)); }
+    }
+    clearTimeout(slow);
     if(r.error) throw new Error(r.error);
     setToken(r.token,r.nick); ME={nick:r.nick}; hideAuth(); onLogin(); toast("👋 Привет, "+r.nick+"!");
     countVisit();
