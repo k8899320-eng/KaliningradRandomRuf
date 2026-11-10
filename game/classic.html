@@ -1,0 +1,761 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#0b0e1a">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="description" content="Руфер Калининград — беги по ночным крышам, прыгай через провалы и антенны.">
+<title>Руфер Калининград — 2D</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<style>
+  html,body{margin:0;height:100%;background:#0b0e1a;overflow:hidden;touch-action:none;-webkit-user-select:none;user-select:none;
+    font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;color:#eef1f6}
+  canvas{display:block;width:100vw;height:100vh;height:100dvh}
+  .ui{position:fixed;inset:0;overflow-y:auto;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:min(14px,2.5vh);text-align:center;
+      background:rgba(8,10,20,.55);padding:20px;pointer-events:auto}
+  .ui.hidden{display:none}
+  h1{margin:0;font-size:min(64px,8vw,11vh);font-weight:900;letter-spacing:-.02em;line-height:1}
+  h1 span{color:#ff6a3d}
+  .sub{color:#aab2c5;font-size:min(15px,3.8vh);max-width:420px;line-height:1.45}
+  .big{font-size:20px;font-weight:800;border:0;border-radius:16px;padding:min(16px,3vh) 36px;cursor:pointer;color:#1a0d06;
+       background:linear-gradient(135deg,#ff6a3d,#ffb03d);box-shadow:0 10px 30px -8px rgba(255,106,61,.6)}
+  .small{background:#1f2430;color:#eef1f6;border:1px solid #2c3342;border-radius:12px;padding:10px 16px;font-size:14px;cursor:pointer}
+  .row{display:flex;gap:10px;flex-wrap:wrap;justify-content:center}
+  .stat{font-size:18px}.stat b{color:#ffb03d}
+  .hud{position:fixed;top:max(10px,env(safe-area-inset-top));left:14px;right:14px;display:flex;justify-content:space-between;
+       font-weight:800;font-size:18px;text-shadow:0 2px 6px rgba(0,0,0,.6);pointer-events:none}
+  .hud b{color:#ffb03d}
+  #pause{position:fixed;top:max(8px,env(safe-area-inset-top));left:50%;transform:translateX(-50%);background:rgba(31,36,48,.7);
+         border:1px solid #2c3342;color:#eef1f6;border-radius:10px;width:40px;height:34px;font-size:16px;cursor:pointer}
+  .hint{color:#8b93a5;font-size:13px}
+  #nick{background:#0f1218;color:#eef1f6;border:1px solid #2c3342;border-radius:12px;padding:10px 12px;font-size:16px;width:170px}
+  .lbList{width:min(420px,90vw);display:grid;gap:6px;max-height:55vh;overflow:auto}
+  .lbRow{display:grid;grid-template-columns:40px 1fr auto;gap:8px;align-items:center;background:#161a22;border:1px solid #262c38;border-radius:12px;padding:8px 12px;text-align:left}
+  .lbRow.top{background:linear-gradient(135deg,#3a2a12,#2a1f10);border-color:#ffb03d}
+  .lbRow.me{border-color:#9ad1ff}
+  .lbRow .r{font-weight:900;color:#8b93a5}.lbRow.top .r{color:#ffd76a}
+  .lbRow .n{font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .lbRow .m{font-weight:800;color:#ffb03d}
+  .step{font-size:15px;color:#aab2c5;letter-spacing:.04em}.step b{color:#ffb03d}
+  .lockbox{position:relative;width:min(420px,86vw);height:min(220px,38vh);background:linear-gradient(#5a5f78,#3b3f55);border-radius:18px;
+    border:3px solid #8a90b5;box-shadow:inset 0 0 30px rgba(0,0,0,.5);padding:12px 18px 34px;box-sizing:border-box}
+  .pins{display:flex;justify-content:space-between;height:100%}
+  .pincol{position:relative;width:15%;height:100%;background:#1c1f2c;border-radius:8px;overflow:hidden;border:2px solid transparent}
+  .pincol.cur{border-color:#ffb03d}.pincol.ok{border-color:#7dff7a}
+  .zone{position:absolute;left:0;right:0;background:rgba(125,255,122,.28);border-top:2px solid #7dff7a;border-bottom:2px solid #7dff7a}
+  .pin{position:absolute;left:18%;right:18%;height:42%;transition:none}
+  .pin .key{position:absolute;left:0;right:0;bottom:0;height:45%;background:#c9a24a;border-radius:3px}
+  .pin .drv{position:absolute;left:0;right:0;bottom:45%;height:55%;background:#9aa3c7;border-radius:3px}
+  .pin.inzone .key{background:#ffe27a;box-shadow:0 0 10px #ffe27a}
+  .pincol.ok .key{background:#7dff7a}
+  .pick{position:absolute;bottom:10px;right:-14px;height:7px;background:linear-gradient(90deg,#e6e8f2,#b9bdd0);border-radius:4px;transition:left .2s,transform .08s;transform-origin:right center}
+  .pick::after{content:"";position:absolute;left:0;top:-9px;width:6px;height:12px;background:#e6e8f2;border-radius:3px 3px 0 0}
+  .lockmsg{min-height:22px;font-weight:700;color:#ffd76a}
+  .cutscene{position:relative;width:min(360px,80vw);height:min(150px,30vh)}
+  .chain{position:absolute;top:50%;left:0;right:0;display:flex;justify-content:center;gap:0;transform:translateY(-50%)}
+  .chain i{width:46px;height:26px;border:7px solid #b7bccf;border-radius:14px;margin:0 -6px;background:transparent}
+  .chain i:nth-child(even){height:14px;margin-top:6px;border-color:#9aa0b8}
+  .chain.broken i.mid{border-color:transparent;border-left-color:#b7bccf}
+  .chain.broken i:nth-child(-n+2){transform:translateY(30px) rotate(-20deg);transition:transform .5s}
+  .chain.broken i:nth-child(n+4){transform:translateY(30px) rotate(20deg);transition:transform .5s}
+  .cutter{position:absolute;left:50%;top:6%;width:0;height:0}
+  .jaw{position:absolute;left:-6px;top:0;width:12px;height:min(140px,28vh);background:linear-gradient(#e0e3ee 0 22%,#d23a2a 22%);border-radius:6px;transform-origin:50% 22%}
+  .jaw.r{background:linear-gradient(#e0e3ee 0 22%,#d23a2a 22%)}
+  .cutter.chomp{animation:chomp .12s}
+  @keyframes chomp{50%{transform:translateY(4px) scale(.97)}}
+  .bar{width:min(360px,80vw);height:16px;background:#1f2430;border-radius:999px;overflow:hidden;border:1px solid #2c3342}
+  .bar div{height:100%;width:0;background:linear-gradient(90deg,#ffb03d,#ff6a3d)}
+  #copbar{display:inline-block;width:70px;height:8px;background:#1f2430;border-radius:99px;overflow:hidden;vertical-align:middle;margin-left:6px;border:1px solid #2c3342}
+  #copbar div{height:100%;background:#7dff7a}
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div class="hud" id="hud"><div>🏃 <span id="dist">0</span> м <span id="pw" style="margin-left:10px;color:#9ad1ff"></span></div><div>⭐ <span id="stars">0</span></div></div>
+<div class="hud" id="hud2" style="top:calc(max(10px,env(safe-area-inset-top)) + 28px);font-size:14px;justify-content:flex-start"><div>👮 до погони <span id="copbar"><div id="copfill"></div></span></div></div>
+<button id="pause" aria-label="Пауза">⏸</button>
+
+<div class="ui" id="menu">
+  <h1>РУФЕР<br><span>КАЛИНИНГРАД</span></h1>
+  <div class="sub">Беги по ночным крышам. Вскрой замок отмычкой, перекуси цепь болторезом — и беги по крышам от полицейского! Тап или пробел — прыжок. Звёзды и бонусы отбрасывают погоню назад. Один раз за забег можно зацепиться за край крыши — тапай, чтобы залезть. Добеги до 10 000 м и сбеги вниз по лестнице!</div>
+  <div class="stat">Рекорд: <b id="best">0</b> м</div>
+  <button class="big" id="play">▶ Играть</button>
+  <div class="row">
+    <button class="small" id="lbBtn">🏆 Лидеры</button>
+    <button class="small" id="sound">🔊 Звук: вкл</button>
+    <button class="small" id="install" style="display:none">📲 Установить</button>
+    <a class="small" href="index.html?force3d" style="text-decoration:none">🧊 3D-версия</a>
+  </div>
+  <div class="hint" id="installHint"></div>
+  <div class="hint" id="no3d" style="display:none;color:#ffd76a">Твой браузер не запустил 3D (WebGL выключен или не поддерживается) — открыта обычная версия.</div>
+</div>
+
+<div class="ui hidden" id="over">
+  <h1 id="overTitle">Сорвался!</h1>
+  <div class="stat">Пробежал: <b id="oDist">0</b> м · ⭐ <b id="oStars">0</b></div>
+  <div class="stat">Очки: <b id="oScore">0</b> · Рекорд: <b id="oBest">0</b> м</div>
+  <div class="row"><input id="nick" maxlength="20" placeholder="Твой ник" autocomplete="off"><button class="small" id="sendScore">📤 В таблицу лидеров</button></div>
+  <div class="hint" id="sendMsg"></div>
+  <button class="big" id="again">↻ Ещё раз</button>
+  <div class="row"><button class="small" id="lbBtn2">🏆 Лидеры</button><button class="small" id="toMenu">В меню</button></div>
+</div>
+
+<div class="ui hidden" id="lb">
+  <h1 style="font-size:min(40px,8vw,9vh)">🏆 Лидеры</h1>
+  <div class="lbList" id="lbList">Загружаю…</div>
+  <button class="small" id="lbClose">← Назад</button>
+</div>
+
+<div class="ui hidden" id="lock">
+  <div class="step">Дверь 1 из 2 · <b>Отмычка</b></div>
+  <div class="lockbox"><div class="pins" id="pins"></div><div class="pick" id="pick"></div></div>
+  <div class="sub">Зажми и держи — штифт поднимается. Отпусти, когда он в <b style="color:#7dff7a">зелёной зоне</b>. Перетянешь — отмычка погнётся.</div>
+  <div class="stat" id="picks"></div>
+  <div class="lockmsg" id="lockmsg"></div>
+  <button class="small" id="skip1">Пропустить двери ⏭</button>
+</div>
+
+<div class="ui hidden" id="cut">
+  <div class="step">Дверь 2 из 2 · <b>Болторез</b></div>
+  <div class="cutscene">
+    <div class="chain" id="chain"><i></i><i></i><i class="mid"></i><i></i><i></i></div>
+    <div class="cutter" id="cutter"><div class="jaw" id="jawL"></div><div class="jaw r" id="jawR"></div></div>
+  </div>
+  <div class="bar"><div id="cutbar"></div></div>
+  <div class="lockmsg" id="cutmsg">Жми быстрее!</div>
+  <button class="big" id="cutbtn">✂️ ЖМИ!</button>
+  <button class="small" id="skip2">Пропустить ⏭</button>
+</div>
+
+<div class="ui hidden" id="paused">
+  <h1>Пауза</h1>
+  <button class="big" id="resume">▶ Продолжить</button>
+  <button class="small" id="quit">В меню</button>
+</div>
+
+<script>
+"use strict";
+// ---------- Хранилище ----------
+const store={get(k,d){try{const v=localStorage.getItem(k);return v===null?d:JSON.parse(v)}catch(e){return d}},
+             set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
+let best=store.get("roofer_best",0), soundOn=store.get("roofer_sound",true);
+
+// ---------- Холст ----------
+const cv=document.getElementById("c"), ctx=cv.getContext("2d");
+const H=400; let W=700, scale=1, dpr=1, offY=0;
+function resize(){
+  dpr=Math.min(window.devicePixelRatio||1,2);
+  const w=window.innerWidth, h=window.innerHeight;
+  scale=Math.min(h/H, w/440); W=w/scale; offY=h/scale-H;
+  cv.width=Math.round(w*dpr); cv.height=Math.round(h*dpr);
+  makeSkyline();
+}
+window.addEventListener("resize",resize);
+
+// ---------- Звук ----------
+let ac=null;
+function beep(f1,f2,dur,type,vol){
+  if(!soundOn) return;
+  try{
+    ac=ac||new (window.AudioContext||window.webkitAudioContext)();
+    const o=ac.createOscillator(), g=ac.createGain(), t=ac.currentTime;
+    o.type=type||"square"; o.frequency.setValueAtTime(f1,t); o.frequency.exponentialRampToValueAtTime(f2,t+dur);
+    g.gain.setValueAtTime(vol||.08,t); g.gain.exponentialRampToValueAtTime(.0001,t+dur);
+    o.connect(g).connect(ac.destination); o.start(t); o.stop(t+dur);
+  }catch(e){}
+}
+const sJump=()=>beep(300,700,.12,"square",.06), sDouble=()=>beep(500,1100,.12,"square",.06),
+      sStar=()=>beep(900,1500,.09,"triangle",.09), sDie=()=>beep(400,60,.5,"sawtooth",.08),
+      sSpring=()=>beep(200,900,.25,"sine",.1), sPower=()=>{beep(600,1200,.15,"triangle",.08);setTimeout(()=>beep(900,1800,.15,"triangle",.08),120)}, sBoom=()=>beep(180,40,.35,"sawtooth",.05),
+      sClick=()=>beep(1800,1200,.05,"square",.07), sBend=()=>beep(300,80,.3,"sawtooth",.07), sOpen=()=>{beep(500,900,.1,"triangle",.08);setTimeout(()=>beep(900,1300,.12,"triangle",.08),110)}, sSnap=()=>beep(2500,200,.2,"square",.09);
+
+// ---------- Фон: дальние дома ----------
+let far=[], mid=[];
+function rnd(a,b){return a+Math.random()*(b-a)}
+function pick(a){return a[Math.random()*a.length|0]}
+function makeSkyline(){
+  far=[]; mid=[];
+  let x=0; while(x<W*2+200){const w=rnd(40,90); far.push({x,w,h:rnd(90,200),spire:Math.random()<.12}); x+=w+rnd(0,6);}
+  x=0; while(x<W*2+200){const w=rnd(50,110); mid.push({x,w,h:rnd(60,160),seed:Math.random()*1e4|0}); x+=w+rnd(2,14);}
+}
+const stars=[...Array(70)].map(()=>({x:Math.random(),y:Math.random()*.55,r:Math.random()*1.3+.3,t:Math.random()*6}));
+
+// Палитры неба: ночь → рассвет → закат → ночь (меняются по мере бега)
+const SKIES=[
+  {top:"#0b0e1a",mid:"#1b1838",bot:"#3a1f2e",far:"#191a33",midB:"#22223f",star:1,moon:"#fff3d6"},
+  {top:"#1d2a55",mid:"#6a4a7a",bot:"#f19a6b",far:"#3b3560",midB:"#4a3f6b",star:.25,moon:"#ffe3b0"},
+  {top:"#2a5da8",mid:"#7fb0e0",bot:"#ffd29a",far:"#6d86b8",midB:"#5e6f9e",star:0,moon:"#fff8e0"},
+  {top:"#2b1e4a",mid:"#b24a5c",bot:"#ffb36b",far:"#4a2f55",midB:"#4f3456",star:.15,moon:"#ffd9a0"},
+];
+function lerpC(a,b,f){const p=s=>[1,3,5].map(i=>parseInt(s.slice(i,i+2),16)), A=p(a), B=p(b);
+  return "#"+A.map((v,i)=>Math.round(v+(B[i]-v)*f).toString(16).padStart(2,"0")).join("");}
+function skyAt(m){ // m — метры
+  const L=900, i=Math.floor(m/L)%SKIES.length, f=Math.min(1,Math.max(0,(m%L-L+150)/150));
+  const a=SKIES[i], b=SKIES[(i+1)%SKIES.length], o={};
+  for(const k in a) o[k]=typeof a[k]==="number"? a[k]+(b[k]-a[k])*f : lerpC(a[k],b[k],f);
+  return o;
+}
+
+// ---------- Игра ----------
+const G=2300, JUMP=-760, DJUMP=-640, SPRING=-1150, PX=110;
+const STYLES=["panel","brick","glass","old","neon"];
+const FINISH_M=10000;
+let usedGrab=false, hang=null, finalRoof=null, guard=null, hatch=null, fin=null, finT=0, hasSpray=false;
+let chase=75, cop=null, state="menu", t=0, speed, dist, starCount, roofs, items, parts, birds, fx=[], popups=[], player, camX, shake, lastTs=0, power={type:null,until:0}, nextMilestone;
+
+function reset(){
+  speed=220; dist=0; starCount=0; camX=0; shake=0; parts=[]; birds=[]; fx=[]; popups=[]; nextMilestone=500;
+  power={type:null,until:0};
+  roofs=[{x:-50,w:700,y:300,style:"panel",seed:1}]; items=[];
+  player={x:PX,y:300,vy:0,ground:true,jumps:0,coyote:0,buf:0,run:0,dead:false,on:null};
+  chase=75; cop={y:300,vy:0,ground:true,run:0};
+  usedGrab=false; hang=null; finalRoof=null; guard=null; hatch=null; fin=null; finT=0; hasSpray=false;
+  while(lastRoofEnd()<W+600) addRoof();
+}
+function lastRoofEnd(){const r=roofs[roofs.length-1]; return r.x+r.w;}
+function surfaceY(r){ return r.plat? r.baseY+Math.sin(t*r.spd+r.ph)*r.amp : r.y; }
+
+function addRoof(){
+  if(finalRoof) return;
+  const prev=roofs[roofs.length-1];
+  if(prev.x+prev.w > FINISH_M*10-300){
+    const py=prev.plat?prev.baseY:prev.y, y=Math.max(220,Math.min(320,py+rnd(-30,30)));
+    const r={x:prev.x+prev.w+speed*.22,w:1900,y,style:"brick",seed:777,final:true};
+    roofs.push(r); finalRoof=r;
+    items.push({x:r.x+320,y:y-26,kind:"spray"});
+    guard={x:r.x+1050,down:false}; hatch={x:r.x+1230};
+    return;
+  }
+  const k=Math.min(1,(speed-220)/220);
+  const prevY=prev.plat?prev.baseY:prev.y;
+  let gap=rnd(speed*.2, speed*.38);
+  // иногда — большой провал с парящей платформой посередине
+  if(Math.random()<.18+.1*k){
+    const g1=rnd(speed*.22,speed*.3), pw=rnd(speed*.42,speed*.52), py=Math.max(180,Math.min(320,prevY+rnd(-45,40)));
+    const plat={x:prev.x+prev.w+g1,w:pw,baseY:py,y:py,amp:rnd(8,22),spd:rnd(1.5,2.6),ph:Math.random()*6,plat:true,style:"plat"};
+    roofs.push(plat);
+    if(Math.random()<.8) for(let i=0;i<3;i++) items.push({x:plat.x+pw/2-28+i*28,y:py-26,kind:"star",plat});
+    gap=rnd(speed*.22,speed*.33);
+    return addRoofAfter(plat,gap,py,k);
+  }
+  addRoofAfter(prev,gap,prevY,k);
+}
+function addRoofAfter(prev,gap,prevY,k){
+  let y=prevY+rnd(-55,90); y=Math.max(180,Math.min(340,y));
+  if(y<prevY-25) gap=Math.min(gap,speed*.3);
+  const w=rnd(190-40*k, 430-120*k);
+  const r={x:prev.x+prev.w+gap,w,y,style:pick(STYLES),seed:Math.random()*1e4|0};
+  // голуби
+  if(Math.random()<.35){ const n=1+(Math.random()*3|0); for(let i=0;i<n;i++) birds.push({x:r.x+rnd(40,w-30),y:r.y-6,vx:0,vy:0,fly:false,flap:Math.random()*6}); }
+  roofs.push(r);
+  // звёзды
+  if(Math.random()<.65){
+    const arc=Math.random()<.5;
+    for(let i=0;i<(arc?5:3);i++){
+      const ix=arc? prev.x+prev.w-20+i*(gap+40)/4 : r.x+rnd(40,Math.max(60,w-100))+i*28;
+      const iy=arc? Math.min(prevY,y)-22-Math.sin(i/4*Math.PI)*45 : y-26;
+      items.push({x:ix,y:iy,kind:"star"});
+    }
+  }
+  // бонус
+  if(Math.random()<.07) items.push({x:r.x+rnd(60,w-40),y:y-26,kind:pick(["magnet","wings","x2","x2","x2"])});
+}
+
+const POWER={magnet:{icon:"🧲",name:"Магнит",dur:8},wings:{icon:"🪽",name:"Крылья — плавное падение",dur:9},x2:{icon:"✖️2",name:"Звёзды ×2",dur:10}};
+function maxJumps(){ return 1; }
+
+function jumpPress(){
+  if(state!=="play") return;
+  if(hang){ hang.prog=Math.min(1,hang.prog+.2); beep(300+hang.prog*500,200+hang.prog*500,.05,"square",.05); puff(player.x,player.y-34,2,"#cfd5e1"); return; }
+  if(fin==="face"){ fin="spray"; finT=0; beep(1500,300,.6,"sawtooth",.04); return; }
+  if(fin) return;
+  const p=player;
+  if(p.ground||p.coyote>0){ p.vy=JUMP; p.ground=false; p.coyote=0; p.jumps=1; sJump(); puff(p.x,p.y,6); }
+  else if(p.jumps<maxJumps()){ p.vy=DJUMP; p.jumps++; sDouble(); puff(p.x,p.y+10,8,p.jumps>2?"#9ad1ff":"#ffb03d"); }
+  else p.buf=.12;
+}
+function jumpRelease(){ if(player&&player.vy<-250&&!player.sprung) player.vy*=.55; }
+
+function puff(x,y,n,col){ for(let i=0;i<n;i++) parts.push({x,y,vx:rnd(-120,60),vy:rnd(-160,-20),life:rnd(.3,.6),c:col||"#cfd5e1"}); }
+function popup(text,col){ popups.push({text,col:col||"#ffd76a",life:1.6}); }
+function firework(){
+  for(let n=0;n<3;n++){ const cx=rnd(W*.3,W*.9), cy=rnd(60,160), col=pick(["#ff6a3d","#ffd76a","#9ad1ff","#c38bff","#7dffb0"]);
+    setTimeout(()=>{ sBoom(); for(let i=0;i<40;i++){const a=i/40*Math.PI*2, v=rnd(80,180); fx.push({x:cx,y:cy,vx:Math.cos(a)*v,vy:Math.sin(a)*v,life:rnd(.8,1.3),c:col});} },n*250); }
+}
+
+function moveCam(nc){ const d=nc-camX; camX=nc; dist+=d; }
+function startHang(){
+  const wx=camX+player.x;
+  const r=roofs.find(r=>!r.plat && r.x>=wx-40 && r.x<=wx+260);
+  if(!r) return false;
+  usedGrab=true; hang={r,prog:0,timer:4};
+  moveCam(r.x-player.x-9); player.vy=0; player.ground=false; player.y=surfaceY(r)+32;
+  shake=.15; beep(200,120,.15,"square",.07); popup("Зацепился! Тапай быстро! ⬆","#ffb03d");
+  return true;
+}
+function die(why){
+  if(player.dead) return;
+  if((why==="wall"||why==="fall") && !usedGrab && !fin && startHang()) return;
+  window.__why=why;
+  player.dead=true; shake=.4; sDie(); puff(player.x,player.y-14,24,"#ff6a3d");
+  setTimeout(gameOver,700);
+}
+function win(){
+  state="over"; const m=Math.floor(dist/10), score=m+starCount*25+5000, rec=m>best;
+  if(rec){best=m; store.set("roofer_best",best);}
+  window.__why="win";
+  $("overTitle").textContent="Вы сбежали! 🎉";
+  $("oDist").textContent=m; $("oStars").textContent=starCount; $("oScore").textContent=score; $("oBest").textContent=best;
+  prepOver(m); firework(); show("over");
+}
+// ---------- Таблица лидеров (Supabase) ----------
+const SB_URL="https://hmkecihzribgeguzcwkt.supabase.co/rest/v1/comments", SB_KEY="sb_publishable_9HipXlYi7d-mQbgXMVmr-w_v_n38Dkz";
+const LB_ID="game:leaderboard", MAX_VALID=FINISH_M+300;
+const PINNED=[{n:"Креатор",m:25100,pinned:true}];
+let lbFrom="menu", lastRunM=0, sentThisRun=false;
+function lbHeaders(x){ return Object.assign({"apikey":SB_KEY,"Content-Type":"application/json"},x||{}); }
+async function loadLB(){
+  $("lbList").innerHTML='<div class="hint">Загружаю…</div>';
+  let rows=[];
+  try{
+    const r=await fetch(SB_URL+"?house_id=eq."+encodeURIComponent(LB_ID)+"&select=author,body&order=created_at.desc&limit=1000",{headers:lbHeaders()});
+    if(r.ok) rows=await r.json();
+  }catch(e){}
+  const best={};
+  for(const x of rows){ const m=parseInt(x.body,10), n=String(x.author||"").trim().slice(0,20);
+    if(!n||!(m>0)||m>MAX_VALID) continue;
+    if(PINNED.some(p=>p.n.toLowerCase()===n.toLowerCase())) continue;
+    const k=n.toLowerCase(); if(!best[k]||best[k].m<m) best[k]={n,m}; }
+  const list=PINNED.concat(Object.values(best).sort((a,b)=>b.m-a.m)).slice(0,20);
+  const me=(store.get("roofer_nick","")||"").toLowerCase();
+  $("lbList").innerHTML=list.map((x,i)=>`<div class="lbRow${i===0?" top":""}${x.n.toLowerCase()===me?" me":""}"><span class="r">${i===0?"👑":"#"+(i+1)}</span><span class="n">${escH(x.n)}</span><span class="m">${x.m.toLocaleString("ru-RU")} м</span></div>`).join("")
+    +(rows.length?"":'<div class="hint">Пока больше никого нет — будь следующим!</div>');
+}
+function escH(s){ return String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c])); }
+function openLB(from){ lbFrom=from; show("lb"); loadLB(); }
+async function sendScore(){
+  const n=$("nick").value.trim().slice(0,20);
+  if(!n){ $("sendMsg").textContent="Напиши ник"; return; }
+  if(PINNED.some(p=>p.n.toLowerCase()===n.toLowerCase())){ $("sendMsg").textContent="Этот ник занят 👑"; return; }
+  if(sentThisRun){ $("sendMsg").textContent="Этот забег уже в таблице"; return; }
+  if(lastRunM<10){ $("sendMsg").textContent="Пробеги хотя бы 10 м"; return; }
+  store.set("roofer_nick",n); $("sendScore").disabled=true; $("sendMsg").textContent="Отправляю…";
+  try{
+    const r=await fetch(SB_URL,{method:"POST",headers:lbHeaders({"Prefer":"return=minimal"}),body:JSON.stringify({house_id:LB_ID,author:n,body:String(Math.min(lastRunM,MAX_VALID))})});
+    if(!r.ok) throw new Error("HTTP "+r.status);
+    sentThisRun=true; $("sendMsg").textContent="✅ Результат в таблице!";
+  }catch(e){ $("sendMsg").textContent="Не отправилось: "+e.message; }
+  $("sendScore").disabled=false;
+}
+function prepOver(m){ lastRunM=m; sentThisRun=false; $("sendMsg").textContent=""; $("nick").value=store.get("roofer_nick",""); }
+function gameOver(){
+  state="over";
+  const m=Math.floor(dist/10), score=m+starCount*25, rec=m>best;
+  if(rec){best=m; store.set("roofer_best",best);}
+  $("overTitle").textContent=window.__why==="caught"?(rec?"Поймали, но рекорд! 🏆":"Поймали! 👮"):(rec?"Новый рекорд! 🏆":"Сорвался!");
+  $("oDist").textContent=m; $("oStars").textContent=starCount; $("oScore").textContent=score; $("oBest").textContent=best;
+  prepOver(m); show("over");
+}
+
+function update(dt){
+  t+=dt;
+  for(const q of fx){ q.x+=q.vx*dt; q.y+=q.vy*dt; q.vy+=90*dt; q.life-=dt; } fx=fx.filter(q=>q.life>0);
+  for(const q of popups) q.life-=dt; popups=popups.filter(q=>q.life>0);
+  if(state!=="play") return;
+  const p=player;
+  if(hang){
+    hang.timer-=dt; if(hang.prog<1) hang.prog=Math.max(0,hang.prog-.35*dt);
+    p.y=surfaceY(hang.r)+32-hang.prog*22; p.run+=dt*40;
+    chase=Math.max(0,chase-0.8*dt);
+    if(hang.prog>=1){ moveCam(hang.r.x-p.x+16); p.y=surfaceY(hang.r); p.vy=0; p.ground=true; p.on=hang.r; hang=null; popup("Залез! 💪","#7dff7a"); sPower(); }
+    else if(hang.timer<=0){ hang=null; p.vy=200; window.__why="fall"; p.dead=true; shake=.4; sDie(); setTimeout(gameOver,900); }
+    hudUpdate(); return;
+  }
+  if(fin){ finale(dt); hudUpdate(); return; }
+  if(finalRoof && guard && p.ground && camX+p.x>=guard.x-48){ fin="face"; finT=0; if(!hasSpray){hasSpray=true;} popup("Охранник! Тапай — брызни! 🧴","#ff8a5d"); hudUpdate(); return; }
+  if(!p.dead){ speed=Math.min(440,speed+5*dt); }
+  const dx=p.dead?speed*.3*dt:speed*dt;
+  camX+=dx; dist+=dx; p.run+=dx;
+  // физика
+  const prevBottom=p.y;
+  const wingFall=(power.type==="wings"&&t<power.until&&p.vy>0)?.5:1;
+  p.vy+=G*dt*(p.vy>0?1.15*wingFall:1); p.y+=p.vy*dt;
+  if(p.vy>=0) p.sprung=false;
+  p.coyote=Math.max(0,p.coyote-dt); p.buf=Math.max(0,p.buf-dt);
+  const wx=camX+p.x, halfW=11;
+  let on=null;
+  for(const r of roofs){
+    const sy=surfaceY(r);
+    if(wx+halfW>r.x && wx-halfW<r.x+r.w){
+      const tol=r.plat?r.amp*r.spd*dt+4:2;
+      if(prevBottom<=sy+tol && p.y>=sy-(r.plat?tol:0) && p.vy>=0){ on=r; }
+      else if(!r.plat && p.y>sy+6 && wx+halfW>r.x && wx-halfW<r.x+8 && prevBottom>sy+6 && !p.dead){ die("wall"); }
+    }
+  }
+  const wasGround=p.ground;
+  if(on && !p.dead){
+    p.y=surfaceY(on); p.vy=0; p.ground=true; p.jumps=0; p.on=on;
+    if(!wasGround) puff(p.x,p.y,4);
+    if(p.buf>0){p.buf=0; jumpPress();}
+  } else { if(wasGround) p.coyote=.09; p.ground=false; p.on=null; }
+  // предметы
+  const magnet=power.type==="magnet"&&t<power.until;
+  for(const it of items){
+    if(it.got) continue;
+    if(it.plat) it.y=surfaceY(it.plat)-26;
+    if(magnet && it.kind==="star"){ const ddx=wx-it.x, ddy=(p.y-16)-it.y, d=Math.hypot(ddx,ddy); if(d<200){ it.x+=ddx/d*500*dt; it.y+=ddy/d*500*dt; it.plat=null; } }
+    const reachY=it.kind==="star"?26:90;
+    if(Math.abs(it.x-wx)<(it.kind==="star"?20:30) && Math.abs(it.y-(p.y-16))<reachY){
+      it.got=true;
+      if(it.kind==="spray"){ hasSpray=true; sPower(); popup("🧴 Перцовый баллончик!","#ff8a5d"); puff(p.x,it.y,12,"#ff8a5d"); }
+      else if(it.kind==="star"){ const v=(power.type==="x2"&&t<power.until)?2:1; starCount+=v; chase=Math.min(100,chase+3*v); sStar(); puff(p.x,it.y,6,"#ffd76a"); }
+      else { power={type:it.kind,until:t+POWER[it.kind].dur}; chase=Math.min(100,chase+12); sPower(); popup(POWER[it.kind].icon+" "+POWER[it.kind].name+"!","#9ad1ff"); puff(p.x,it.y,14,"#9ad1ff"); }
+    }
+  }
+  // голуби
+  for(const b of birds){
+    if(!b.fly && Math.abs(b.x-wx)<90){ b.fly=true; b.vx=rnd(40,120); b.vy=rnd(-160,-90); if(Math.random()<.4) beep(1200,1600,.05,"triangle",.03); }
+    if(b.fly){ b.x+=b.vx*dt; b.y+=b.vy*dt; b.vy-=20*dt; }
+    b.flap+=dt*(b.fly?20:2);
+  }
+  // погоня
+  if(!p.dead && !(finalRoof && camX+p.x>finalRoof.x)){ chase-=(1.6+Math.min(2,dist/10/700))*dt; if(chase<=0){ chase=0; die("caught"); } }
+  { const cx=copX(), cwx=camX+cx, prevB=cop.y; cop.vy+=G*dt*(cop.vy>0?1.15:1); cop.y+=cop.vy*dt; cop.run+=dx;
+    let con=null; for(const r of roofs){ const sy=surfaceY(r); if(cwx+10>r.x&&cwx-10<r.x+r.w&&prevB<=sy+8&&cop.y>=sy-2&&cop.vy>=0) con=r; }
+    if(con){ cop.y=surfaceY(con); cop.vy=0; cop.ground=true; if(con.x+con.w-cwx<18){ const nx=roofs[roofs.indexOf(con)+1]; cop.vy=JUMP*(nx&&surfaceY(nx)<surfaceY(con)-20?1:.9); cop.ground=false; } }
+    else cop.ground=false;
+    if(cop.y>H+40){ const r=roofs.find(r=>r.x+r.w>cwx); cop.y=r?surfaceY(r)-60:p.y-60; cop.vy=0; } }
+  // упал
+  if(p.y>H+80 && !p.dead){ die("fall"); }
+  // отметки
+  const m=Math.floor(dist/10);
+  if(m>=nextMilestone){ popup(nextMilestone+" м! 🎆"); firework(); nextMilestone+=500; }
+  // генерация и уборка
+  while(!finalRoof && lastRoofEnd()<camX+W+600) addRoof();
+  roofs=roofs.filter(r=>r.x+r.w>camX-100); items=items.filter(i=>i.x>camX-50 && !(i.got&&i.x<camX));
+  birds=birds.filter(b=>b.x>camX-50 && b.y>-100);
+  for(const r of roofs) if(r.boing) r.boing=Math.max(0,r.boing-dt);
+  for(const q of parts){ q.x+=q.vx*dt-dx; q.y+=q.vy*dt; q.vy+=600*dt; q.life-=dt; }
+  parts=parts.filter(q=>q.life>0);
+  shake=Math.max(0,shake-dt);
+  hudUpdate();
+}
+function hudUpdate(){
+  $("dist").textContent=Math.floor(dist/10); $("stars").textContent=starCount;
+  $("copfill").style.width=chase+"%"; $("copfill").style.background=chase<25?"#ff5a5a":chase<50?"#ffb03d":"#7dff7a";
+  const left=power.type&&t<power.until?Math.ceil(power.until-t):0;
+  $("pw").textContent=(hasSpray?"🧴 ":"")+(left?POWER[power.type].icon+" "+left+"с":"");
+}
+function finale(dt){
+  const p=player; finT+=dt;
+  for(const q of parts){ q.x+=q.vx*dt; q.y+=q.vy*dt; q.vy+=200*dt; q.life-=dt; } parts=parts.filter(q=>q.life>0);
+  if(fin==="spray"){
+    for(let i=0;i<4;i++) parts.push({x:p.x+14,y:p.y-30,vx:rnd(160,300),vy:rnd(-60,20),life:rnd(.3,.5),c:pick(["#ff8a3d","#ffb03d","#ffd27a"])});
+    if(finT>1.1&&!guard.down){ guard.down=true; popup("Ай! Мои глаза! 😵","#ffd76a"); beep(500,200,.3,"square",.05); }
+    if(finT>1.9){ fin="exit"; finT=0; }
+  } else if(fin==="exit"){
+    const d=150*dt; moveCam(camX+d); p.run+=d;
+    if(camX+p.x>=hatch.x+37){ fin="down"; finT=0; popup("Вниз по лестнице! 🪜","#7dff7a"); }
+  } else if(fin==="down"){
+    p.y=finalRoof.y+Math.min(60,finT*45); p.run+=dt*60;
+    if(finT>1.7){ fin="done"; win(); }
+  }
+}
+
+// ---------- Отрисовка ----------
+function hash(seed,i,j){ const v=Math.sin(seed*13.1+i*7.7+j*3.3)*43758.5; return v-Math.floor(v); }
+function winColor(seed,i,j,day){ const f=hash(seed,i,j); if(day>.6) return f<.15?"#cfe6ff":null; return f<.35?"#ffd27a":f<.42?"#9ad1ff":null; }
+function draw(){
+  ctx.setTransform(dpr*scale,0,0,dpr*scale,0,dpr*scale*offY);
+  if(shake>0) ctx.translate(rnd(-4,4)*shake*5,rnd(-4,4)*shake*5);
+  const meters=(state==="menu"||state==="lock"||state==="cut")?0:dist/10, sky=skyAt(meters), day=1-sky.star;
+  const g=ctx.createLinearGradient(0,0,0,H); g.addColorStop(0,sky.top); g.addColorStop(.6,sky.mid); g.addColorStop(1,sky.bot);
+  ctx.fillStyle=sky.top; ctx.fillRect(-20,-offY-20,W+40,offY+40); ctx.fillStyle=g; ctx.fillRect(-20,-20,W+40,H+40);
+  if(sky.star>0.02) for(const s of stars){ ctx.globalAlpha=sky.star*(.4+.6*Math.abs(Math.sin(t*1.5+s.t))); ctx.fillStyle="#fff"; ctx.fillRect(s.x*W,s.y*(H+offY)-offY,s.r,s.r); }
+  ctx.globalAlpha=1;
+  // луна / солнце
+  ctx.fillStyle=sky.moon; ctx.beginPath(); ctx.arc(W*.8,70,26,0,7); ctx.fill();
+  if(sky.star>.5){ ctx.fillStyle=sky.mid; ctx.beginPath(); ctx.arc(W*.8+10,64,22,0,7); ctx.fill(); }
+  const cam=(state==="menu"||state==="lock"||state==="cut")?t*60:camX;
+  // дальний план со шпилями
+  ctx.fillStyle=sky.far;
+  const fo=(cam*.15)%(W+200);
+  for(const b of far){ let x=b.x-fo; if(x+b.w<-200) x+=W*2+200; ctx.fillRect(x,H-b.h,b.w,b.h);
+    if(b.spire){ ctx.beginPath(); ctx.moveTo(x+b.w/2-10,H-b.h); ctx.lineTo(x+b.w/2,H-b.h-60); ctx.lineTo(x+b.w/2+10,H-b.h); ctx.fill(); } }
+  // средний план
+  const mo=(cam*.4)%(W+300);
+  for(const b of mid){
+    let x=b.x-mo; if(x+b.w<-300) x+=W*2+200; if(x>W) continue;
+    ctx.fillStyle=sky.midB; ctx.fillRect(x,H-b.h,b.w,b.h);
+    ctx.globalAlpha=.55;
+    for(let i=0;i<b.w/14-1;i++) for(let j=0;j<b.h/18-1;j++){ const c=winColor(b.seed,i,j,day); if(c){ctx.fillStyle=c; ctx.fillRect(x+6+i*14,H-b.h+8+j*18,6,8);} }
+    ctx.globalAlpha=1;
+  }
+  if(state==="menu"||state==="lock"||state==="cut"){ drawMenuRoof(); drawFx(); return; }
+  for(const r of roofs){ const x=r.x-camX; if(x>W+20||x+r.w<-20) continue; drawRoof(r,x,day); }
+  // голуби
+  for(const b of birds){ const x=b.x-camX; if(x<-20||x>W+20) continue; drawBird(x,b.y,b.fly,b.flap); }
+  // предметы
+  for(const it of items){ if(it.got) continue; const x=it.x-camX; if(x<-20||x>W+20) continue;
+    const y=it.y+Math.sin(t*4+it.x)*3;
+    if(it.kind==="star") drawStar(x,y,8);
+    else if(it.kind==="spray"){ ctx.fillStyle="rgba(255,138,93,.25)"; ctx.beginPath(); ctx.arc(x,y,16+Math.sin(t*6)*2,0,7); ctx.fill();
+      ctx.fillStyle="#d23a2a"; ctx.fillRect(x-5,y-8,10,18); ctx.fillStyle="#222"; ctx.fillRect(x-3,y-12,6,4); ctx.fillStyle="#fff"; ctx.fillRect(x-5,y-2,10,3); }
+    else { ctx.fillStyle="rgba(154,209,255,.25)"; ctx.beginPath(); ctx.arc(x,y,15+Math.sin(t*6)*2,0,7); ctx.fill();
+      ctx.font="18px system-ui"; ctx.textAlign="center"; ctx.textBaseline="middle"; ctx.fillText(it.kind==="magnet"?"🧲":it.kind==="wings"?"🪽":"⭐", x, y+1);
+      if(it.kind==="x2"){ ctx.font="bold 10px system-ui"; ctx.fillStyle="#fff"; ctx.fillText("×2",x+11,y+10); } }
+  }
+  for(const q of parts){ ctx.globalAlpha=Math.max(0,q.life*2); ctx.fillStyle=q.c; ctx.fillRect(q.x,q.y,3,3); } ctx.globalAlpha=1;
+  if(guard) drawGuard(guard.x-camX,finalRoof.y,guard.down);
+  if(hatch) drawHatch(hatch.x-camX,finalRoof.y,fin==="down"||fin==="done");
+  if(cop) drawCop(copX(),cop.y,cop.ground,cop.run,cop.vy);
+  if(hang){ drawHanging(player.x,player.y,hang.r.x-camX,surfaceY(hang.r));
+    const bw=160, bx=W/2-bw/2; ctx.fillStyle="rgba(0,0,0,.5)"; ctx.fillRect(bx-4,170,bw+8,40);
+    ctx.font="bold 18px system-ui"; ctx.textAlign="center"; ctx.textBaseline="middle"; ctx.fillStyle="#ffd76a"; ctx.fillText("ТАПАЙ! ⬆ "+Math.max(0,hang.timer).toFixed(1)+"с",W/2,182);
+    ctx.fillStyle="#1f2430"; ctx.fillRect(bx,196,bw,8); ctx.fillStyle="#7dff7a"; ctx.fillRect(bx,196,bw*hang.prog,8); }
+  else if(fin==="down"||fin==="done"){ const hx=hatch.x-camX; ctx.save(); ctx.beginPath(); ctx.rect(hx+22,finalRoof.y-60,30,60); ctx.clip(); drawRunner(player.x,player.y,true,player.run,0); ctx.restore(); }
+  else if(!player.dead){
+    if(power.type&&t<power.until){ ctx.strokeStyle="rgba(154,209,255,"+(.35+.2*Math.sin(t*10))+")"; ctx.lineWidth=2; ctx.beginPath(); ctx.arc(player.x,player.y-20,24,0,7); ctx.stroke(); }
+    drawRunner(player.x,player.y,player.ground,player.run,player.vy);
+  }
+  drawFx();
+  // всплывающие надписи
+  for(const q of popups){ ctx.globalAlpha=Math.min(1,q.life); ctx.font="bold 26px system-ui"; ctx.textAlign="center"; ctx.textBaseline="middle";
+    ctx.fillStyle="rgba(0,0,0,.5)"; ctx.fillText(q.text,W/2+2,120-(1.6-q.life)*25+2); ctx.fillStyle=q.col; ctx.fillText(q.text,W/2,120-(1.6-q.life)*25); }
+  ctx.globalAlpha=1;
+}
+function drawFx(){ for(const q of fx){ ctx.globalAlpha=Math.max(0,q.life); ctx.fillStyle=q.c; ctx.fillRect(q.x,q.y,3,3); } ctx.globalAlpha=1; }
+function drawRoof(r,x,day){
+  const sy=surfaceY(r);
+  if(r.plat){ // подвешенный груз крана
+    ctx.strokeStyle="#8a90b5"; ctx.lineWidth=2; ctx.beginPath(); ctx.moveTo(x+r.w/2,-offY); ctx.lineTo(x+r.w/2,sy-18); ctx.moveTo(x+r.w/2,sy-18); ctx.lineTo(x+6,sy); ctx.moveTo(x+r.w/2,sy-18); ctx.lineTo(x+r.w-6,sy); ctx.stroke();
+    ctx.fillStyle="#e0a030"; ctx.fillRect(x,sy,r.w,12);
+    ctx.fillStyle="#2a2a2a"; for(let i=0;i<r.w;i+=16) ctx.fillRect(x+i,sy+2,8,8);
+    return;
+  }
+  const H2=H-sy+20;
+  if(r.style==="panel"){ ctx.fillStyle="#2d2f4a"; ctx.fillRect(x,sy,r.w,H2);
+    ctx.fillStyle="#262842"; for(let j=0;j<H2;j+=26) ctx.fillRect(x,sy+j+22,r.w,2);
+    winGrid(r,x,sy,22,26,9,12,day); }
+  else if(r.style==="brick"){ ctx.fillStyle="#5a2f2a"; ctx.fillRect(x,sy,r.w,H2);
+    ctx.fillStyle="#4a2622"; for(let j=0;j<H2;j+=8) for(let i=(j/8%2)*10;i<r.w;i+=20) ctx.fillRect(x+i,sy+j,1,8);
+    for(let j=0;j<H2;j+=8) ctx.fillRect(x,sy+j,r.w,1);
+    winGrid(r,x,sy,30,34,12,18,day,"#3a1c18"); }
+  else if(r.style==="glass"){ ctx.fillStyle=day>.6?"#5f86b8":"#1f3555"; ctx.fillRect(x,sy,r.w,H2);
+    ctx.fillStyle=day>.6?"rgba(255,255,255,.25)":"rgba(120,180,255,.18)"; for(let i=0;i<r.w;i+=18) ctx.fillRect(x+i,sy,1,H2); for(let j=0;j<H2;j+=14) ctx.fillRect(x,sy+j,r.w,1);
+    ctx.fillStyle="rgba(255,255,255,.12)"; ctx.beginPath(); ctx.moveTo(x+r.w*.2,sy); ctx.lineTo(x+r.w*.35,sy); ctx.lineTo(x+r.w*.15,sy+H2); ctx.lineTo(x,sy+H2); ctx.fill(); }
+  else if(r.style==="old"){ ctx.fillStyle="#d8c8a8"; ctx.fillRect(x,sy,r.w,H2); if(day<.6){ctx.fillStyle="rgba(10,10,40,.55)"; ctx.fillRect(x,sy,r.w,H2);}
+    ctx.fillStyle="#a83a2a"; ctx.fillRect(x-4,sy-2,r.w+8,6);
+    for(let i=0;i<(r.w-20)/30;i++) for(let j=0;j<(H-sy)/40;j++){ const c=winColor(r.seed,i,j,day)||"#3a3a50"; ctx.fillStyle="#6b5a40"; ctx.fillRect(x+14+i*30,sy+20+j*40,14,22); ctx.fillStyle=c; ctx.fillRect(x+16+i*30,sy+22+j*40,10,18); } }
+  else { ctx.fillStyle="#24203a"; ctx.fillRect(x,sy,r.w,H2); winGrid(r,x,sy,22,26,9,12,day);
+    if(!r.sign){ r.sign=pick(["КАФЕ","ЯНТАРЬ","24 ЧАСА","КЁНИГ","ОТЕЛЬ","МАРКЕТ"]); r.sc=pick(["#ff4fa0","#4fe0ff","#ffd24f","#7dff7a"]); }
+    const blink=hash(r.seed,Math.floor(t*3),0)>.08; ctx.font="bold 14px system-ui"; ctx.textAlign="center"; ctx.textBaseline="middle";
+    const tw=Math.min(r.w-20,ctx.measureText(r.sign).width+16);
+    ctx.fillStyle="#120f20"; ctx.fillRect(x+r.w/2-tw/2,sy+14,tw,22);
+    if(blink){ ctx.shadowColor=r.sc; ctx.shadowBlur=12; } ctx.fillStyle=blink?r.sc:"#444"; ctx.fillText(r.sign,x+r.w/2,sy+26); ctx.shadowBlur=0; }
+  // парапет
+  ctx.fillStyle=r.style==="old"?"#7a2a20":"#4b4f72"; ctx.fillRect(x-3,sy-6,r.w+6,8);
+  ctx.fillStyle=r.style==="old"?"#b04a38":"#6a6f99"; ctx.fillRect(x-3,sy-6,r.w+6,2);
+  // батут
+  if(r.spring!==undefined){ const sx=x+r.spring, sq=r.boing?6:0;
+    ctx.fillStyle="#2a2a2a"; ctx.fillRect(sx-18,sy-10+sq,3,10-sq); ctx.fillRect(sx+15,sy-10+sq,3,10-sq);
+    ctx.fillStyle="#7dff7a"; ctx.fillRect(sx-20,sy-12+sq,40,4); ctx.fillStyle="rgba(125,255,122,.3)"; ctx.fillRect(sx-20,sy-16+sq,40,4); }
+}
+function winGrid(r,x,sy,dx,dy,ww,wh,day,frame){
+  for(let i=0;i<(r.w-20)/dx;i++) for(let j=0;j<(H-sy)/dy;j++){ const c=winColor(r.seed,i,j,day);
+    if(frame){ctx.fillStyle=frame; ctx.fillRect(x+10+i*dx,sy+18+j*dy,ww+4,wh+4);}
+    if(c){ctx.fillStyle=c; ctx.fillRect(x+12+i*dx,sy+20+j*dy,ww,wh);} }
+}
+function drawBird(x,y,fly,flap){
+  ctx.fillStyle="#9aa0b8"; ctx.beginPath(); ctx.ellipse(x,y-4,6,4,0,0,7); ctx.fill();
+  ctx.beginPath(); ctx.arc(x+5,y-8,3,0,7); ctx.fill(); ctx.fillStyle="#ffb03d"; ctx.fillRect(x+7,y-8,3,1.5);
+  if(fly){ const w=Math.sin(flap)*7; ctx.strokeStyle="#9aa0b8"; ctx.lineWidth=2; ctx.beginPath(); ctx.moveTo(x-2,y-5); ctx.lineTo(x-8,y-5-w); ctx.moveTo(x+1,y-5); ctx.lineTo(x+6,y-5-w); ctx.stroke(); }
+}
+function drawStar(x,y,r){
+  ctx.fillStyle="#ffd76a"; ctx.beginPath();
+  for(let i=0;i<10;i++){ const a=i*Math.PI/5-Math.PI/2, rr=i%2?r*.45:r; ctx.lineTo(x+Math.cos(a)*rr,y+Math.sin(a)*rr); }
+  ctx.fill();
+}
+function drawRunner(x,y,ground,run,vy){
+  const ph=run/22, leg=ground?Math.sin(ph)*9:(vy<0?-6:5), arm=ground?Math.cos(ph)*8:-8;
+  ctx.lineCap="round"; ctx.lineWidth=4;
+  ctx.strokeStyle="#1d2233"; ctx.beginPath(); ctx.moveTo(x,y-14); ctx.lineTo(x+leg,y); ctx.moveTo(x,y-14); ctx.lineTo(x-leg,y); ctx.stroke();
+  ctx.fillStyle="#ff6a3d"; ctx.fillRect(x-6,y-30,12,17);
+  ctx.strokeStyle="#ff8a5d"; ctx.beginPath(); ctx.moveTo(x,y-26); ctx.lineTo(x+arm,y-17); ctx.moveTo(x,y-26); ctx.lineTo(x-arm,y-17); ctx.stroke();
+  ctx.fillStyle="#f1c9a5"; ctx.beginPath(); ctx.arc(x+1,y-36,6,0,7); ctx.fill();
+  ctx.fillStyle="#e2552c"; ctx.beginPath(); ctx.arc(x-1,y-37,6.5,Math.PI*.9,Math.PI*1.9); ctx.fill();
+  if(power.type==="wings"&&t<power.until){ const w=Math.sin(t*18)*6; ctx.fillStyle="rgba(230,240,255,.85)";
+    ctx.beginPath(); ctx.moveTo(x-4,y-26); ctx.lineTo(x-18,y-34-w); ctx.lineTo(x-14,y-22); ctx.fill(); }
+}
+function copX(){ return player.x-24-chase*.8; }
+function drawCop(x,y,ground,run,vy){
+  if(x<-30) return;
+  const ph=run/20, leg=ground?Math.sin(ph)*9:(vy<0?-6:5), arm=ground?Math.cos(ph)*8:-10;
+  ctx.lineCap="round"; ctx.lineWidth=4;
+  ctx.strokeStyle="#111725"; ctx.beginPath(); ctx.moveTo(x,y-14); ctx.lineTo(x+leg,y); ctx.moveTo(x,y-14); ctx.lineTo(x-leg,y); ctx.stroke();
+  ctx.fillStyle="#2d4a8a"; ctx.fillRect(x-7,y-31,14,18);
+  ctx.fillStyle="#ffd76a"; ctx.fillRect(x-1,y-28,3,3);
+  ctx.strokeStyle="#3b5ca8"; ctx.beginPath(); ctx.moveTo(x,y-27); ctx.lineTo(x+12,y-30+arm*.3); ctx.moveTo(x,y-27); ctx.lineTo(x-arm,y-18); ctx.stroke();
+  ctx.fillStyle="#f1c9a5"; ctx.beginPath(); ctx.arc(x+1,y-37,6,0,7); ctx.fill();
+  ctx.fillStyle="#1d2b55"; ctx.fillRect(x-6,y-45,14,5); ctx.fillRect(x-2,y-41,12,2);
+  const blink=Math.sin(t*16)>0; ctx.fillStyle=blink?"#ff3b3b":"#3b7bff"; ctx.beginPath(); ctx.arc(x+1,y-47,2.5,0,7); ctx.fill();
+}
+function drawHanging(x,y,wallX,top){
+  ctx.lineCap="round"; ctx.lineWidth=4;
+  ctx.strokeStyle="#ff8a5d"; ctx.beginPath(); ctx.moveTo(x,y-26); ctx.lineTo(wallX-2,top-2); ctx.moveTo(x-2,y-26); ctx.lineTo(wallX+4,top-3); ctx.stroke();
+  ctx.fillStyle="#ff6a3d"; ctx.fillRect(x-6,y-30,12,17);
+  const k=Math.sin(t*20)*5;
+  ctx.strokeStyle="#1d2233"; ctx.beginPath(); ctx.moveTo(x,y-14); ctx.lineTo(x+6+k,y-2); ctx.moveTo(x,y-14); ctx.lineTo(x+4-k,y); ctx.stroke();
+  ctx.fillStyle="#f1c9a5"; ctx.beginPath(); ctx.arc(x+1,y-36,6,0,7); ctx.fill();
+  ctx.fillStyle="#e2552c"; ctx.beginPath(); ctx.arc(x-1,y-37,6.5,Math.PI*.9,Math.PI*1.9); ctx.fill();
+}
+function drawGuard(x,y,down){
+  if(x<-40||x>W+40) return;
+  ctx.lineCap="round"; ctx.lineWidth=4;
+  if(!down){
+    ctx.strokeStyle="#111"; ctx.beginPath(); ctx.moveTo(x,y-14); ctx.lineTo(x-4,y); ctx.moveTo(x,y-14); ctx.lineTo(x+4,y); ctx.stroke();
+    ctx.fillStyle="#222630"; ctx.fillRect(x-8,y-32,16,19);
+    ctx.fillStyle="#ffd24f"; ctx.font="bold 5px system-ui"; ctx.textAlign="center"; ctx.fillText("ОХРАНА",x,y-24);
+    ctx.strokeStyle="#2c313d"; ctx.beginPath(); ctx.moveTo(x,y-28); ctx.lineTo(x-12,y-24); ctx.moveTo(x,y-28); ctx.lineTo(x+8,y-18); ctx.stroke();
+    ctx.fillStyle="#e8bf98"; ctx.beginPath(); ctx.arc(x,y-38,6.5,0,7); ctx.fill();
+    ctx.fillStyle="#111"; ctx.fillRect(x-7,y-46,14,4); ctx.fillRect(x-10,y-43,8,2);
+  } else {
+    ctx.fillStyle="#222630"; ctx.fillRect(x-6,y-18,16,14);
+    ctx.strokeStyle="#111"; ctx.beginPath(); ctx.moveTo(x-4,y-4); ctx.lineTo(x+16,y-2); ctx.moveTo(x-2,y-4); ctx.lineTo(x+18,y); ctx.stroke();
+    ctx.fillStyle="#e8bf98"; ctx.beginPath(); ctx.arc(x+2,y-24,6.5,0,7); ctx.fill();
+    ctx.strokeStyle="#2c313d"; ctx.beginPath(); ctx.moveTo(x+2,y-16); ctx.lineTo(x-3,y-25); ctx.moveTo(x+4,y-16); ctx.lineTo(x+6,y-25); ctx.stroke();
+    ctx.fillStyle="#111"; ctx.fillRect(x-5,y-8,12,4);
+    ctx.font="bold 9px system-ui"; ctx.fillStyle="#ffd76a"; ctx.textAlign="center"; ctx.fillText("✱ ✱",x+2,y-36+Math.sin(t*8)*2);
+  }
+}
+function drawHatch(x,y,open){
+  if(x<-90||x>W+40) return;
+  ctx.fillStyle="#6b3a2e"; ctx.fillRect(x,y-62,74,62); ctx.fillStyle="#7a2a20"; ctx.fillRect(x-4,y-66,82,6);
+  ctx.fillStyle=open?"#0a0a12":"#3b4258"; ctx.fillRect(x+22,y-46,30,46);
+  if(open){ ctx.fillStyle="#8a90b5"; for(let i=0;i<5;i++) ctx.fillRect(x+24,y-40+i*9,26,2); }
+  ctx.fillStyle="#7dff7a"; ctx.font="bold 9px system-ui"; ctx.textAlign="center"; ctx.textBaseline="middle"; ctx.fillText("ВЫХОД",x+37,y-54);
+}
+function drawMenuRoof(){
+  ctx.fillStyle="#2d2f4a"; ctx.fillRect(0,320,W,100); ctx.fillStyle="#4b4f72"; ctx.fillRect(0,314,W,8);
+  if(!power) power={type:null,until:0};
+  drawRunner(W/2,314,true,t*180,0);
+}
+
+// ---------- Цикл ----------
+function loop(ts){
+  const dt=Math.min(.033,(ts-lastTs)/1000||0); lastTs=ts;
+  if(state==="lock") updateLock(dt); else if(state==="cut") updateCut(dt);
+  update(dt); draw(); requestAnimationFrame(loop);
+}
+
+// ---------- Интерфейс ----------
+function $(id){return document.getElementById(id)}
+function show(id){ for(const k of ["menu","over","paused","lock","cut","lb"]) $(k).classList.toggle("hidden",k!==id); const g=(id===null||id==="paused"||id==="over"); $("hud").style.display=$("hud2").style.display=g?"":"none"; $("pause").style.display=id===null?"":"none"; }
+function start(){ startDoors(); }
+// ---------- Двери: отмычка и болторез ----------
+let lock=null, cut=null, doorsDoneOnce=false, pressing=false;
+function startDoors(){
+  reset(); state="lock"; pressing=false;
+  const n=5;
+  lock={pins:[...Array(n)].map(()=>({h:0,lo:rnd(.6,.72),size:rnd(.12,.16),spd:rnd(.75,1.35),set:false})),cur:0,picks:3,msg:"",msgT:0};
+  lock.pins.forEach(p=>p.hi=p.lo+p.size);
+  buildLockUI(); show("lock"); $("skip1").style.display=doorsDoneOnce?"":"none";
+}
+function buildLockUI(){
+  const box=$("pins"); box.innerHTML="";
+  lock.pins.forEach((p,i)=>{
+    const c=document.createElement("div"); c.className="pincol";
+    c.innerHTML=`<div class="zone" style="bottom:${p.lo*100}%;height:${p.size*100}%"></div><div class="pin" id="pin${i}"><div class="key"></div><div class="drv"></div></div>`;
+    box.appendChild(c);
+  });
+  renderLock();
+}
+function renderLock(){
+  lock.pins.forEach((p,i)=>{
+    const el=$("pin"+i); el.style.bottom=(p.h*100)+"%";
+    el.parentNode.classList.toggle("cur",i===lock.cur&&!p.set); el.parentNode.classList.toggle("ok",p.set);
+    const inZ=p.h>=p.lo&&p.h<=p.hi; el.classList.toggle("inzone",inZ&&!p.set);
+  });
+  $("picks").textContent="Отмычки: "+"🔧".repeat(lock.picks)+"▫️".repeat(3-lock.picks);
+  $("lockmsg").textContent=lock.msg;
+  const col=$("pins").children[Math.min(lock.cur,lock.pins.length-1)]; if(col){ $("pick").style.left=(col.offsetLeft+col.offsetWidth/2-3)+"px"; }
+  $("pick").style.transform=`translateY(${pressing?-6:0}px) rotate(${pressing?-3:0}deg)`;
+}
+function updateLock(dt){
+  const p=lock.pins[lock.cur]; if(!p) return;
+  if(pressing){ p.h+=p.spd*dt*(1+.35*Math.sin(t*9)); if(p.h>1){ // перетянул
+      lock.picks--; p.h=0; pressing=false; sBend(); lock.msg="Хрусь! Перетянул — отмычка погнулась";
+      if(lock.picks<=0){ lock.msg="Отмычки кончились — начинаем заново"; lock.picks=3; lock.pins.forEach(q=>{q.set=false;q.h=0}); lock.cur=0; }
+    } }
+  else if(p.h>0) p.h=Math.max(0,p.h-1.6*dt);
+  renderLock();
+}
+function lockRelease(){
+  if(state!=="lock"||!pressing) return; pressing=false;
+  const p=lock.pins[lock.cur];
+  if(p.h>=p.lo&&p.h<=p.hi){ p.set=true; p.h=(p.lo+p.hi)/2; sClick(); lock.msg="Щёлк! Штифт "+(lock.cur+1)+" на месте"; lock.cur++;
+    if(lock.cur>=lock.pins.length){ lock.msg="Замок открыт! 🔓"; sOpen(); renderLock(); setTimeout(startCut,800); } }
+  else lock.msg=p.h<p.lo?"Мало — подними выше":"";
+  renderLock();
+}
+function startCut(){ state="cut"; cut={p:0,done:false,taps:0}; show("cut"); $("skip2").style.display=doorsDoneOnce?"":"none"; renderCut(); }
+function cutTap(){
+  if(state!=="cut"||cut.done) return;
+  cut.taps++; cut.p=Math.min(1,cut.p+.075); beep(140+cut.p*200,90,.06,"square",.05);
+  $("cutter").classList.remove("chomp"); void $("cutter").offsetWidth; $("cutter").classList.add("chomp");
+  if(cut.p>=1){ cut.done=true; sSnap(); $("cutmsg").textContent="Цепь перекушена! Беги! 🏃"; setTimeout(()=>{ doorsDoneOnce=true; startRun(); },900); }
+  renderCut();
+}
+function updateCut(dt){ if(!cut.done){ cut.p=Math.max(0,cut.p-.22*dt); renderCut(); } }
+function renderCut(){
+  $("cutbar").style.width=(cut.p*100)+"%";
+  const a=8+cut.p*14; $("jawL").style.transform=`rotate(${-a}deg)`; $("jawR").style.transform=`rotate(${a}deg)`;
+  $("chain").classList.toggle("broken",cut.done);
+  if(!cut.done) $("cutmsg").textContent=cut.p<.3?"Жми быстрее!":cut.p<.7?"Ещё! Ещё!":"Почти!";
+}
+function startRun(){ state="play"; show(null); popup("👮 Полиция! Беги!","#ff6a6a"); beep(700,500,.25,"square",.06); setTimeout(()=>beep(700,500,.25,"square",.06),300); }
+
+$("best").textContent=best;
+$("lbBtn").onclick=()=>openLB("menu"); $("lbBtn2").onclick=()=>openLB("over"); $("lbClose").onclick=()=>show(lbFrom);
+$("sendScore").onclick=sendScore; $("nick").addEventListener("keydown",e=>{ e.stopPropagation(); if(e.key==="Enter") sendScore(); });
+$("play").onclick=start; $("again").onclick=start;
+$("toMenu").onclick=$("quit").onclick=()=>{ state="menu"; $("best").textContent=best; show("menu"); };
+$("pause").onclick=e=>{ e.stopPropagation(); if(state==="play"){state="paused"; show("paused");} };
+$("resume").onclick=()=>{ state="play"; show(null); };
+$("skip1").onclick=e=>{ e.stopPropagation(); startRun(); };
+$("skip2").onclick=e=>{ e.stopPropagation(); startRun(); };
+$("lock").addEventListener("pointerdown",e=>{ if(e.target.closest("button")) return; e.preventDefault(); if(state==="lock"){ pressing=true; lock.msg=""; } });
+window.addEventListener("pointerup",lockRelease); window.addEventListener("pointercancel",lockRelease);
+$("cutbtn").addEventListener("pointerdown",e=>{ e.preventDefault(); e.stopPropagation(); cutTap(); });
+$("cut").addEventListener("pointerdown",e=>{ if(e.target.closest("button")) return; e.preventDefault(); cutTap(); });
+$("sound").textContent="🔊 Звук: "+(soundOn?"вкл":"выкл");
+$("sound").onclick=()=>{ soundOn=!soundOn; store.set("roofer_sound",soundOn); $("sound").textContent="🔊 Звук: "+(soundOn?"вкл":"выкл"); };
+
+cv.addEventListener("pointerdown",e=>{ e.preventDefault(); jumpPress(); });
+window.addEventListener("pointerup",jumpRelease);
+window.addEventListener("keydown",e=>{
+  if(e.repeat) return;
+  if(e.code==="Space"||e.code==="ArrowUp"||e.code==="KeyW"||e.code==="Enter"){ e.preventDefault();
+    if(state==="menu"||state==="over") start(); else if(state==="lock"){ pressing=true; lock.msg=""; } else if(state==="cut") cutTap(); else jumpPress(); }
+  if(e.code==="Escape"||e.code==="KeyP"){ if(state==="play"){state="paused";show("paused");} else if(state==="paused"){state="play";show(null);} }
+});
+window.addEventListener("keyup",e=>{ if(e.code==="Space"||e.code==="ArrowUp"||e.code==="KeyW"||e.code==="Enter"){ if(state==="lock") lockRelease(); else jumpRelease(); } });
+document.addEventListener("visibilitychange",()=>{ if(document.hidden&&state==="play"){state="paused";show("paused");} });
+
+// ---------- Установка (PWA) ----------
+let deferred=null;
+window.addEventListener("beforeinstallprompt",e=>{ e.preventDefault(); deferred=e; $("install").style.display=""; });
+$("install").onclick=async()=>{ if(!deferred) return; deferred.prompt(); await deferred.userChoice; deferred=null; $("install").style.display="none"; };
+const standalone=matchMedia("(display-mode: standalone)").matches;
+const embedded=window.top!==window.self;
+if(!standalone&&!embedded) $("installHint").textContent="Чтобы играть без интернета: в Chrome меню ⋮ → «Установить приложение» / «Добавить на главный экран».";
+if(matchMedia("(orientation: portrait)").matches && innerWidth<600) $("installHint").textContent="📱↻ Поверни телефон горизонтально — так видно больше крыш. "+$("installHint").textContent;
+if("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(()=>{});
+
+resize(); show("menu"); if(location.search.includes("no3d")) $("no3d").style.display=""; requestAnimationFrame(loop);
+</script>
+</body>
+</html>

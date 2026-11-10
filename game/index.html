@@ -112,6 +112,7 @@
     <button class="small" id="sound">🔊 Звук: вкл</button>
     <button class="small" id="gfx">✨ Графика: высокая</button>
     <button class="small" id="install" style="display:none">📲 Установить</button>
+    <a class="small" href="classic.html" style="text-decoration:none">🕹 2D-версия</a>
   </div>
   <div class="hint" id="installHint"></div>
 </div></div>
@@ -159,6 +160,22 @@
   <button class="small" id="quit">В меню</button>
 </div></div>
 
+<script>
+// Если 3D недоступно (WebGL выключен/не поддерживается) — сразу открываем 2D-версию
+(function(){
+  var ok=false; try{ var c=document.createElement("canvas"); ok=!!(window.WebGLRenderingContext&&(c.getContext("webgl2")||c.getContext("webgl")||c.getContext("experimental-webgl"))); }catch(e){}
+  if(!ok && !/force3d/.test(location.search)){ location.replace("classic.html?no3d"); return; }
+  window.__fail3d=function(msg){
+    var d=document.createElement("div");
+    d.style.cssText="position:fixed;left:12px;right:12px;bottom:12px;z-index:99999;background:#fbf9f5;color:#18191d;border-radius:16px;padding:14px 16px;font:14px/1.45 system-ui,sans-serif;box-shadow:0 10px 30px rgba(0,0,0,.35)";
+    d.innerHTML='<b>3D не запустилось.</b> '+String(msg).replace(/</g,"&lt;").slice(0,200)+'<br><a href="classic.html?no3d" style="display:inline-block;margin-top:8px;background:#18191d;color:#fff;border-radius:999px;padding:9px 16px;text-decoration:none;font-weight:700">Играть в 2D-версию</a>';
+    document.body.appendChild(d);
+  };
+  window.addEventListener("error",function(e){ if(!window.__gameReady) window.__fail3d(e.message||"ошибка скрипта"); });
+  window.addEventListener("unhandledrejection",function(e){ if(!window.__gameReady) window.__fail3d((e.reason&&e.reason.message)||"ошибка загрузки"); });
+  setTimeout(function(){ if(!window.__gameReady) window.__fail3d("Игра не загрузилась за 12 секунд (медленный интернет или старый браузер)."); },12000);
+})();
+</script>
 <script type="module">
 import * as THREE from "./vendor/three.module.min.js";
 "use strict";
@@ -468,7 +485,9 @@ let GFX=store.get("roofer_gfx","high"); // high | low
 const lowEnd=(navigator.hardwareConcurrency||4)<=4 && /Android|iPhone|iPad/i.test(navigator.userAgent);
 if(!store.get("roofer_gfx",null) && lowEnd) GFX="low";
 
-const renderer=new THREE.WebGLRenderer({canvas:cv,antialias:GFX==="high",powerPreference:"high-performance"});
+let renderer;
+try{ renderer=new THREE.WebGLRenderer({canvas:cv,antialias:GFX==="high",powerPreference:"high-performance"}); }
+catch(e){ if(!/force3d/.test(location.search)){ location.replace("classic.html?no3d"); } throw e; }
 renderer.outputColorSpace=THREE.SRGBColorSpace;
 renderer.toneMapping=THREE.ACESFilmicToneMapping; renderer.toneMappingExposure=1.05;
 renderer.shadowMap.enabled=GFX==="high"; renderer.shadowMap.type=THREE.PCFSoftShadowMap;
@@ -941,7 +960,7 @@ if(location.search.includes("test")) window.__dbg={
   jump(m){ camSnap=true; nextMilestone=Math.ceil(m/500)*500+500; camX=m*10; dist=camX; roofs=[{x:camX-50,w:1200,y:300,style:"panel",seed:3}]; items=[]; birds=[]; while(lastRoofEnd()<camX+W+600) addRoof(); chase=100; },
   nearFinish(){ camSnap=true; nextMilestone=1e9; camX=FINISH_M*10-900; dist=camX; roofs=[{x:camX-50,w:1200,y:300,style:"panel",seed:3}]; items=[]; birds=[]; while(!finalRoof) addRoof(); chase=100; },
   state:()=>({state,fin,dist:Math.floor(dist/10),dead:player&&player.dead})};
-resize(); reset(); show("menu"); $("loadmsg").remove(); requestAnimationFrame(loop);
+resize(); reset(); show("menu"); $("loadmsg").remove(); window.__gameReady=true; requestAnimationFrame(loop);
 </script>
 </body>
 </html>
