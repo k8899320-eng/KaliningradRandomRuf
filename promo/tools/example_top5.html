@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="ru"><head><meta charset="UTF-8"><meta name="viewport" content="width=432,height=768">
+<style>
+  html,body{margin:0;width:432px;height:768px;overflow:hidden;background:#0b0e1a;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;color:#fff}
+  canvas{position:absolute;inset:0}
+  .t{position:absolute;left:0;right:0;text-align:center;padding:0 18px;opacity:0;transform:translateY(16px);transition:opacity .45s,transform .45s cubic-bezier(.2,1.4,.4,1)}
+  .t.on{opacity:1;transform:none}
+  .big{font-weight:900;font-size:40px;line-height:1.05;letter-spacing:-.01em}
+  .big em{font-style:normal;color:#ffb03d}
+  .mid{font-weight:800;font-size:24px;line-height:1.2}
+  .sm{font-size:15px;color:#cfd5e1;font-weight:600}
+  .pill{display:inline-block;background:#ffb03d;color:#1a0d06;border-radius:14px;padding:10px 14px;font-weight:900;font-size:20px;line-height:1.2}
+  .rank{display:inline-block;font-weight:900;font-size:22px;background:rgba(255,106,61,.18);border:2px solid #ff6a3d;border-radius:999px;padding:4px 14px;margin-bottom:8px}
+  .src{position:absolute;bottom:10px;left:0;right:0;text-align:center;font-size:11px;color:#6b7387}
+</style></head><body>
+<canvas id="c" width="1080" height="1920" style="width:432px;height:768px"></canvas>
+
+<div class="t" id="hook" style="top:150px"><div class="big">Самые высокие<br>дома <em>Калининграда</em> 🏙</div><div class="sm" style="margin-top:12px">№1 тебя удивит 👀</div></div>
+
+<div class="t" id="r3" style="top:96px"><div class="rank">№3</div><div class="mid">17 этажей — сразу <span style="color:#ffb03d">16 домов</span>!</div><div class="sm" style="margin-top:6px">Батальная 98 · Елизаветинская 9 · Интернациональная 46 · Ялтинская 4 · Виллима Фермора…</div></div>
+<div class="t" id="r2" style="top:96px"><div class="rank">№2</div><div class="mid">улица 1812 года, 126</div><div class="sm" style="margin-top:6px">19 этажей</div></div>
+<div class="t" id="r1" style="top:96px"><div class="rank" style="background:rgba(255,176,61,.25);border-color:#ffb03d">👑 №1</div><div class="mid">улица Гайдара, 90</div><div class="sm" style="margin-top:6px">25 этажей · ~82 метра · построен в 2024</div></div>
+
+<div class="t" id="stat" style="top:70px"><div class="big" style="font-size:34px">А всего в городе<br><em>676 высоток</em><br>от 9 этажей</div></div>
+<div class="t" id="ask" style="top:70px"><div class="big" style="font-size:34px">А ты был<br>хоть на <em>одной</em>?</div><div class="mid" style="margin-top:14px">Пиши в комментах 👇</div></div>
+
+<div class="t" id="cta" style="top:120px"><div style="font-size:64px">🏢</div><div class="big" style="font-size:34px">РУФ·РАНДОМАЙЗЕР<br><span style="color:#ff6a3d">КАЛИНИНГРАД</span></div>
+  <div class="sm" style="margin:12px 0 10px;font-size:17px;color:#fff">Крути — и узнай, какая высотка<br>выпадет тебе 🎰</div>
+  <div class="pill">k8899320-eng.github.io<br>/KaliningradRandomRuf</div><div class="mid" style="margin-top:12px">👉 ссылка в профиле</div>
+  <div class="sm" style="margin-top:10px;font-size:12px;color:#aab2c5">Береги себя: крыши опасны, а без разрешения — нарушение закона</div></div>
+<div class="src">Данные: OpenStreetMap</div>
+
+<script>
+const cv=document.getElementById("c"), ctx=cv.getContext("2d"), S=2.5, W=432, H=768;
+const T=s=>document.getElementById(s);
+// фон: звёзды и дальние дома
+const stars=[...Array(80)].map(()=>({x:Math.random()*W,y:Math.random()*H*.55,r:Math.random()*1.4+.3,p:Math.random()*6}));
+const far=[];let x=0;while(x<W+60){const w=24+Math.random()*40;far.push({x,w,h:60+Math.random()*120});x+=w+2}
+// здания рейтинга
+const B=[
+  {lv:17,label:"17 эт.",col:"#7dd3fc",x:40},
+  {lv:19,label:"19 эт.",col:"#ffd24f",x:166},
+  {lv:25,label:"25 эт.",col:"#ff6a3d",x:292},
+];
+const ground=H-70, perFloor=15.2;
+const tl=[ // [время, действие]
+  [0.0,()=>show("hook")],
+  [2.6,()=>{hide("hook");show("r3");grow(0)}],
+  [6.0,()=>{hide("r3");show("r2");grow(1)}],
+  [9.4,()=>{hide("r2");show("r1");grow(2)}],
+  [14.0,()=>{hide("r1");show("stat")}],
+  [16.6,()=>{hide("stat");show("ask")}],
+  [19.4,()=>{hide("ask");show("cta");dim=1}],
+];
+let dim=0;
+function show(id){T(id).classList.add("on")} function hide(id){T(id).classList.remove("on")}
+function grow(i){B[i].start=now()}
+const t0=performance.now(); const now=()=>(performance.now()-t0)/1000;
+let k=0;
+function ease(t){return 1-Math.pow(1-t,3)}
+function draw(){
+  const t=now();
+  while(k<tl.length&&t>=tl[k][0]){tl[k][1]();k++}
+  ctx.setTransform(S,0,0,S,0,0);
+  const g=ctx.createLinearGradient(0,0,0,H); g.addColorStop(0,"#0b0e1a"); g.addColorStop(.6,"#1b1838"); g.addColorStop(1,"#3a1f2e");
+  ctx.fillStyle=g; ctx.fillRect(0,0,W,H);
+  for(const s of stars){ctx.globalAlpha=.4+.6*Math.abs(Math.sin(t*1.5+s.p));ctx.fillStyle="#fff";ctx.fillRect(s.x,s.y,s.r,s.r)} ctx.globalAlpha=1;
+  if(t<14){ctx.fillStyle="#fff3d6";ctx.beginPath();ctx.arc(W*.82,90,22,0,7);ctx.fill();ctx.fillStyle="#141530";ctx.beginPath();ctx.arc(W*.82+9,85,19,0,7);ctx.fill();}
+  const off=(t*8)%60;
+  ctx.fillStyle="#1d1e38"; for(const b of far) ctx.fillRect(b.x-off,ground-b.h,b.w,b.h+70);
+  // рейтинг
+  for(const b of B){
+    if(b.start==null) continue;
+    const p=ease(Math.min(1,(t-b.start)/1.6)), floors=Math.max(1,Math.round(b.lv*p)), h=b.lv*perFloor*p, w=100;
+    const top=ground-h;
+    ctx.fillStyle="#2d2f4a"; ctx.fillRect(b.x,top,w,h);
+    ctx.fillStyle="#4b4f72"; ctx.fillRect(b.x-3,top-6,w+6,8);
+    for(let f=0;f<floors;f++) for(let c=0;c<4;c++){ const lit=((f*7+c*3+b.lv)%5)!==0; ctx.fillStyle=lit?"#ffd27a":"#3a3f5c"; ctx.fillRect(b.x+10+c*22,ground-(f+1)*perFloor+4,12,8); }
+    ctx.fillStyle=b.col; ctx.font="900 22px system-ui"; ctx.textAlign="center"; ctx.fillText(floors+" эт.",b.x+w/2,top-14);
+    if(b.lv===25&&p>=1&&t<14){ ctx.font="30px system-ui"; ctx.fillText("👑",b.x+w/2,top-44); }
+  }
+  ctx.fillStyle="#141624"; ctx.fillRect(0,ground,W,H-ground);
+  if(dim){ ctx.fillStyle="rgba(8,10,16,.82)"; ctx.fillRect(0,0,W,H); }
+  requestAnimationFrame(draw);
+}
+requestAnimationFrame(draw);
+window.__dur=23.0;
+</script></body></html>
