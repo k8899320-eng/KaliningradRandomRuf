@@ -94,12 +94,12 @@ async function load(){
 }
 function render(){
   const d=DATA, banned=d.users.filter(u=>u.banned_until).length;
-  const tabs=[["pending","📷 Модерация",d.pending.length],["users","👤 Пользователи",d.users.length],["guests","🌐 Все IP",d.guests.length],["bans","⛔ Баны",d.bans.length],["post","📣 Пост",d.post?1:0]];
+  const tabs=[["pending","📷 Модерация",d.pending.length],["ankets","🤝 Анкеты",0],["users","👤 Пользователи",d.users.length],["guests","🌐 Все IP",d.guests.length],["bans","⛔ Баны",d.bans.length],["post","📣 Пост",d.post?1:0]];
   $("app").innerHTML=`<header><h1>Админка <span>Руф·КЛД</span></h1><button onclick="load()">↻ Обновить</button><div class="me">👑 ${esc(NICK)} · <a href="#" id="lo" style="color:var(--muted)">выйти</a> · <a href="../" style="color:var(--muted)">на сайт</a></div></header>
     <div class="tabs">${tabs.map(t=>`<button data-t="${t[0]}" class="${TAB===t[0]?"on":""}">${t[1]}${t[2]?`<span class="n">${t[2]}</span>`:""}</button>`).join("")}</div><div id="tab"></div>`;
   $("lo").onclick=e=>{ e.preventDefault(); logout(); };
   document.querySelectorAll(".tabs button").forEach(b=>b.onclick=()=>{ TAB=b.dataset.t; render(); });
-  ({pending:tabPending,users:tabUsers,guests:tabGuests,bans:tabBans,post:tabPost})[TAB]();
+  ({pending:tabPending,ankets:tabAnkets,users:tabUsers,guests:tabGuests,bans:tabBans,post:tabPost})[TAB]();
 }
 function tabPending(){
   const L=DATA.pending;
@@ -117,6 +117,23 @@ function tabPending(){
       else if(dl){ if(!confirm("Удалить комментарий целиком?")) return; dl.disabled=true; await rpc("admin_delete_comment",{p_token:TOKEN,p_comment:+dl.dataset.del}); }
       else return;
       load();
+    }catch(err){ alertMsg(err.message); }
+  };
+}
+async function tabAnkets(){
+  $("tab").innerHTML='<div class="empty">Загружаю…</div>';
+  let L=[]; try{ L=await rpc("admin_list_ankets",{p_token:TOKEN}); }catch(e){ $("tab").innerHTML=`<div class="empty">${esc(e.message)}</div>`; return; }
+  $("tab").innerHTML=L.length?L.map(a=>`<div class="card"><div class="row" style="justify-content:space-between"><div><b style="color:var(--accent2)">${esc(a.nick)}</b> <span class="ip muted">${esc(a.last_ip||"")}</span> · ${dt(a.created_at)}</div>
+      <div class="row"><button class="bad" data-bu="${a.user_id}" data-bn="${esc(a.nick)}">⛔ Бан</button><button data-dk="${a.id}">🗑 Удалить анкету</button></div></div>
+      <div style="margin:6px 0"><b>@${esc(a.tg)}</b></div><div style="white-space:pre-wrap">${esc(a.experience)}</div>
+      ${a.replies.map(r=>`<div class="row" style="margin-top:6px;font-size:14px"><span><b>${esc(r.nick)}</b>: ${esc(r.body)} <span class="muted">· ${dt(r.created_at)}</span></span><button data-dr="${r.id}" style="padding:2px 8px;font-size:12px">🗑</button></div>`).join("")}
+    </div>`).join(""):'<div class="empty">Анкет нет</div>';
+  $("tab").onclick=async e=>{
+    const dk=e.target.closest("[data-dk]"), dr=e.target.closest("[data-dr]"), bu=e.target.closest("[data-bu]");
+    try{
+      if(dk){ if(!confirm("Удалить анкету?")) return; await rpc("admin_delete_anket",{p_token:TOKEN,p_anket:+dk.dataset.dk,p_reply:null}); tabAnkets(); }
+      if(dr){ await rpc("admin_delete_anket",{p_token:TOKEN,p_anket:null,p_reply:+dr.dataset.dr}); tabAnkets(); }
+      if(bu) banDialog(bu.dataset.bn,{p_user:+bu.dataset.bu,p_ip:null});
     }catch(err){ alertMsg(err.message); }
   };
 }
