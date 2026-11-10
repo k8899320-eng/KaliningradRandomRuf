@@ -168,6 +168,18 @@
   .pgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
   .pgrid img{width:100%;aspect-ratio:1;object-fit:cover;border-radius:10px;cursor:zoom-in;display:block}
   @media (max-width:600px){ .pstats{grid-template-columns:repeat(2,1fr)} .topgrid{grid-template-columns:repeat(2,1fr)} .tcard img{height:120px} }
+  .search{margin-top:12px}
+  .search input{width:100%;background:#0f1218;color:var(--text);border:1px solid #262c38;border-radius:14px;padding:12px 14px;font:inherit;font-size:16px}
+  .search input:focus{outline:none;border-color:var(--accent)}
+  .replyto{font-size:13px;color:var(--accent2);background:rgba(255,176,61,.08);border:1px solid rgba(255,176,61,.3);border-radius:10px;padding:6px 10px;display:flex;justify-content:space-between;gap:8px}
+  .replyto button{background:none;border:0;color:var(--muted);cursor:pointer;font:inherit}
+  .citem .rmark{font-size:12px;color:var(--muted);margin-bottom:3px}
+  .citem .rbtn{background:none;border:0;color:var(--muted);font:inherit;font-size:12px;cursor:pointer;padding:4px 0 0}
+  .citem .rbtn:hover{color:var(--accent2)}
+  .mention{color:#7dd3fc;cursor:pointer}
+  .rrow1 .rk{font-family:Unbounded,sans-serif;font-size:13px;min-width:34px;text-align:center}
+  .rrow1 .st{margin-left:auto;font-size:12px;color:var(--muted);white-space:nowrap}
+  .rrow1 .sc{font-weight:800;color:var(--accent2);margin-left:8px}
   #lightbox{position:fixed;inset:0;background:rgba(0,0,0,.88);display:none;align-items:center;justify-content:center;z-index:9500;cursor:zoom-out;padding:16px}
   #lightbox img{max-width:100%;max-height:100%;border-radius:12px}
   h1{font-family:Unbounded,sans-serif;font-weight:800;font-size:clamp(28px,6vw,52px);line-height:1;margin:0 0 8px;letter-spacing:-.02em}
@@ -252,7 +264,7 @@
   <div class="logo">🏢 Руф<span>·</span>КЛД</div>
   <span id="meBox" class="mebox"></span>
   <button id="bell" class="bell" style="display:none" aria-label="Уведомления">🔔<span id="bellN"></span></button>
-  <nav class="nav"><a href="#mine" data-tab="fav">⭐ Избранное</a><a href="#mine" data-tab="hist">🕘 История</a><a href="#top-sec">🏆 Топ</a><a href="#allmap-sec">🗺 Карта</a><a href="#" id="openGame3">🎮 Игра</a></nav>
+  <nav class="nav"><a href="#mine" data-tab="fav">⭐ Избранное</a><a href="#mine" data-tab="hist">🕘 История</a><a href="#top-sec">🏆 Топ видов</a><a href="#roofers-sec">👑 Руферы</a><a href="#allmap-sec">🗺 Карта</a><a href="#" id="openGame3">🎮 Игра</a></nav>
 </div></div>
 <div class="wrap">
   <div class="hero">
@@ -297,6 +309,8 @@
   <div id="nearList" class="nearlist" style="display:none"></div>
 
   <div class="slot" id="slot">Нажми «Крутить» 🎰</div>
+  <div class="search"><input id="q" type="search" placeholder="🔎 Найти дом по адресу: Гайдара, Московский 1…" autocomplete="off"></div>
+  <div id="qres" class="nearlist" style="display:none"></div>
   </div>
 
   <div class="card" id="card">
@@ -305,7 +319,7 @@
     <div class="info">
       <h2 class="addr" id="addr"></h2>
       <div class="tags" id="tags"></div>
-      <div class="actions"><button id="beenBtn">✅ Я тут был</button><button id="favBtn">☆ В избранное</button><button id="shareBtn">🔗 Поделиться домом</button></div>
+      <div class="actions"><button id="beenBtn">✅ Я тут был</button><button id="favBtn">☆ В избранное</button><button id="shareBtn">🔗 Поделиться домом</button><button id="storyBtn">🖼 Карточка для сторис</button></div>
       <div class="beeninfo" id="beenInfo"></div>
       <div class="links" id="links"></div>
     </div>
@@ -314,6 +328,7 @@
       <h3>💬 Комментарии <small id="ccount"></small></h3>
       <form class="cform" id="cform" autocomplete="off">
         <div class="cmsg" id="asWho"></div>
+        <div class="replyto" id="replyTo" style="display:none"></div>
         <textarea id="ctext" maxlength="500" placeholder="Что скажешь про этот дом? Вид, подъезд, охрана…"></textarea>
         <div class="pickrow">
           <label class="filebtn">📷 Фото с крыши<input type="file" id="cfile" accept="image/*"></label>
@@ -331,6 +346,11 @@
     <h2>📌 Мои дома</h2>
     <div class="tabs"><button data-t="fav" class="on">⭐ Избранное</button><button data-t="been">✅ Был тут</button><button data-t="hist">🕘 История</button></div>
     <div class="mini" id="mineList"></div>
+  </div>
+
+  <div class="section" id="roofers-sec">
+    <h2>👑 Топ руферов <small style="display:block;font-size:12px;margin-top:4px">очки = ❤️ лайки + 2×🏢 высотки + 3×📷 фото</small></h2>
+    <div class="mini" id="roofers"><div class="empty">Загружаю…</div></div>
   </div>
 
   <div class="section" id="top-sec">
@@ -359,6 +379,14 @@
 </div>
 <div class="toast" id="toast"></div>
 <div id="notifPanel" class="notifpanel" style="display:none"></div>
+<div id="storyModal" class="modal" style="display:none;z-index:9950">
+  <div class="mbox" style="max-width:380px">
+    <div class="crewhead"><h2 style="font-size:18px">🖼 Карточка для сторис</h2><button class="x" id="stClose" aria-label="Закрыть">✕</button></div>
+    <img id="stImg" alt="Карточка дома" style="width:100%;border-radius:14px;display:block;margin:6px 0 12px;background:#0f1218;min-height:200px">
+    <div style="display:grid;gap:8px"><button class="mainbtn" id="stShare">📤 Поделиться</button><a class="mainbtn" id="stDl" download="ruf-kld.png" style="text-align:center;text-decoration:none;display:block">⬇️ Скачать картинку</a></div>
+    <div class="msub" style="margin:10px 0 0;font-size:12px">На телефоне можно просто зажать картинку → «Сохранить».</div>
+  </div>
+</div>
 <div id="profileModal" class="modal" style="display:none;align-items:flex-start;z-index:9900">
   <div class="mbox profbox"><div class="crewhead"><h2 id="pfTitle">Профиль</h2><button class="x" id="pfClose" aria-label="Закрыть">✕</button></div><div id="pfBody"></div></div>
 </div>
@@ -686,6 +714,14 @@ function fmtDate(iso){
 }
 const PHOTO_BUCKET="roof-photos", SUPA=SUPABASE_URL.replace(/\/$/,"");
 const photoUrl=path=>`${SUPA}/storage/v1/object/public/${PHOTO_BUCKET}/${path}`;
+function mentions(t){ return esc(t).replace(/@([A-Za-zА-Яа-яЁё0-9_.-]{3,20})/g,(m,n)=>`<span class="mention nick" data-nick="${n}">@${n}</span>`); }
+let replyTo=null;
+function setReply(id,nick){
+  replyTo=id?{id,nick}:null;
+  $("replyTo").style.display=id?"flex":"none";
+  if(id){ $("replyTo").innerHTML=`<span>↩ Ответ для <b>@${esc(nick)}</b></span><button type="button" id="replyX">✕ отмена</button>`; $("replyX").onclick=()=>setReply(null);
+    const t=$("ctext"); if(!t.value.includes("@"+nick)) t.value="@"+nick+" "+t.value; t.focus(); }
+}
 function renderComments(list){
   $("ccount").textContent=list.length?`(${list.length})`:"";
   const photos=list.filter(c=>c.photo).length; if(photos) $("ccount").textContent+=` · 📷 ${photos}`;
@@ -694,9 +730,10 @@ function renderComments(list){
     const ph=ok?`<div class="cphoto"><img src="${photoUrl(c.photo)}" alt="Вид с крыши" loading="lazy" data-full="${photoUrl(c.photo)}">
       <div class="crow2"><button class="like${c.liked?" on":""}" data-like="${c.id}">${c.liked?"❤️":"🤍"} <span>${c.likes||0}</span></button><button class="rep" data-rep="${c.id}">🚩 Не с крыши / плохое фото</button></div></div>`:"";
     const pend=c.my_pending?`<div class="pend">⏳ Твоё фото на модерации — появится после проверки</div>`:"";
-    const txt=(c.body&&c.body!=="📷")?`<div class="txt">${esc(c.body)}</div>`:"";
+    const txt=(c.body&&c.body!=="📷")?`<div class="txt">${mentions(c.body)}</div>`:"";
     if(!txt&&!ph&&!pend) return "";
-    return `<div class="citem"><div class="meta"><b class="nick" data-nick="${esc(c.author||"")}">${esc(c.author||"аноним")}</b> · ${fmtDate(c.created_at)}${ph?" · 📷 вид с крыши":""}</div>${txt}${ph}${pend}</div>`;
+    const rm=c.reply_author?`<div class="rmark">↩ ответ <span class="nick" data-nick="${esc(c.reply_author)}">@${esc(c.reply_author)}</span></div>`:"";
+    return `<div class="citem"><div class="meta"><b class="nick" data-nick="${esc(c.author||"")}">${esc(c.author||"аноним")}</b> · ${fmtDate(c.created_at)}${ph?" · 📷 вид с крыши":""}</div>${rm}${txt}${ph}${pend}<button class="rbtn" data-reply="${c.id}" data-rnick="${esc(c.author||"")}">↩ Ответить</button></div>`;
   }).join("") : `<div class="cmsg">Пока никто ничего не написал. Будь первым — можно с фото с крыши 📷</div>`;
 }
 $("clist").addEventListener("click",async e=>{
@@ -709,8 +746,10 @@ $("clist").addEventListener("click",async e=>{
   catch(err){ rb.textContent="Не отправилось: "+err.message; rb.disabled=false; }
 });
 $("lightbox").onclick=()=>{ $("lightbox").style.display="none"; };
+$("clist").addEventListener("click",e=>{ const r=e.target.closest("[data-reply]"); if(r){ if(!TOKEN){ showAuth(); return; } setReply(+r.dataset.reply,r.dataset.rnick); $("cform").scrollIntoView({block:"center",behavior:"smooth"}); } });
 async function loadComments(b){
   const sameHouse = currentHouse===b.id;
+  if(!sameHouse&&typeof setReply==="function") setReply(null);
   currentHouse=b.id;
   if(!COMMENTS_ON){ $("clist").innerHTML=`<div class="cmsg">Комментарии не подключены.</div>`; $("csend").disabled=true; return; }
   $("csend").disabled=false; if(!sameHouse){ $("cmsg").textContent=""; $("ccount").textContent=""; }
@@ -739,8 +778,8 @@ $("cform").addEventListener("submit",async ev=>{
       if(!up.ok) throw new Error("фото не загрузилось");
       photo=path;
     }
-    const r=await rpc("add_comment",{p_token:TOKEN,p_house:house,p_body:body,p_photo:photo});
-    $("ctext").value=""; clearPhoto();
+    const r=await rpc("post_comment",{p_token:TOKEN,p_house:house,p_body:body,p_photo:photo,p_reply_to:replyTo?replyTo.id:null});
+    $("ctext").value=""; clearPhoto(); setReply(null);
     $("cmsg").textContent=r&&r.photo_pending?"✅ Отправлено! Фото появится после проверки модератором":"✅ Отправлено";
     if(currentHouse===house) loadComments({id:house});
   }catch(e){ $("cmsg").textContent="Не отправилось: "+(e.message==="Failed to fetch"?"нет связи с сервером":(e.message||e)); }
@@ -794,7 +833,7 @@ $("shareBtn").onclick=async()=>{
   try{ await navigator.clipboard.writeText(url); toast("🔗 Ссылка на дом скопирована"); }catch(e){ prompt("Скопируй ссылку:",url); }
 };
 function afterShow(b){
-  currentB=b.fallback?null:b; $("favBtn").style.display=$("shareBtn").style.display=b.fallback?"none":"";
+  currentB=b.fallback?null:b; $("favBtn").style.display=$("shareBtn").style.display=$("storyBtn").style.display=$("beenBtn").style.display=b.fallback?"none":"";
   if(b.fallback) return;
   hist=[b.id].concat(hist.filter(i=>i!==b.id)).slice(0,10); ls.set("roof_hist",hist);
   try{ history.replaceState(null,"","#"+hashOf(b)); }catch(e){}
@@ -920,6 +959,80 @@ $("anketList").addEventListener("click",async e=>{
 });
 $("anketList").addEventListener("keydown",e=>{ if(e.key==="Enter"&&e.target.dataset.rin){ e.preventDefault(); document.querySelector(`[data-rsend="${e.target.dataset.rin}"]`).click(); } });
 
+// ---------- Поиск по адресу ----------
+const norm=s=>String(s||"").toLowerCase().replace(/ё/g,"е").replace(/(улица|ул\.?|проспект|пр-т|пр\.?|переулок|пер\.?|бульвар|б-р|площадь|пл\.?|набережная|наб\.?|шоссе|аллея)/g," ").replace(/[^a-zа-я0-9]+/g," ").trim();
+$("q").addEventListener("input",()=>{
+  const q=norm($("q").value), box=$("qres");
+  if(q.length<2){ box.style.display="none"; return; }
+  const parts=q.split(" ");
+  const L=all.filter(b=>{ const t=norm(b.street+" "+b.num+" "+(b.name||"")); return parts.every(p=>t.includes(p)); })
+    .sort((a,b)=>a.street.localeCompare(b.street,"ru")||String(a.num).localeCompare(String(b.num),"ru",{numeric:true})).slice(0,30);
+  box.style.display="grid";
+  box.innerHTML=L.length?`<div class="empty" style="padding:0 2px">Найдено: ${L.length===30?"30+":L.length}</div>`+L.map(b=>`<div class="mrow" data-id="${b.id}"><span class="lv">${b.lv} эт</span><span class="a">${esc(label(b))}</span></div>`).join(""):'<div class="empty">Ничего не нашлось. Попробуй только название улицы.</div>';
+});
+$("qres").addEventListener("click",e=>{ const r=e.target.closest(".mrow"); if(r){ const b=byId(r.dataset.id); if(b){ openHouse(b); } } });
+
+// ---------- Топ руферов ----------
+async function loadRoofers(){
+  try{
+    const L=await rpc("get_top_roofers",{})||[];
+    $("roofers").innerHTML=L.length?L.map((u,i)=>`<div class="mrow rrow1" data-nick="${esc(u.nick)}"><span class="rk">${i<3?["🥇","🥈","🥉"][i]:"#"+(i+1)}</span><span class="a"><b>${esc(u.nick)}</b></span><span class="st">❤️ ${u.likes} · 🏢 ${u.been} · 📷 ${u.photos}</span><span class="sc">${u.score}</span></div>`).join("")
+      :'<div class="empty">Пока пусто — отмечай дома «✅ Я тут был» и выкладывай фото, чтобы попасть в топ!</div>';
+  }catch(e){ $("roofers").innerHTML='<div class="empty">Не удалось загрузить</div>'; }
+}
+
+// ---------- Карточка для сторис ----------
+function loadImg(src){ return new Promise((ok,bad)=>{ const i=new Image(); i.crossOrigin="anonymous"; i.onload=()=>ok(i); i.onerror=bad; i.src=src; }); }
+function wrap(ctx,text,x,y,maxW,lh){ const w=text.split(" "); let line="", yy=y; for(const word of w){ const t=line?line+" "+word:word; if(ctx.measureText(t).width>maxW&&line){ ctx.fillText(line,x,yy); line=word; yy+=lh; } else line=t; } if(line) ctx.fillText(line,x,yy); return yy; }
+async function makeStory(b){
+  const W=1080,H=1920, c=document.createElement("canvas"); c.width=W; c.height=H; const x=c.getContext("2d");
+  const g=x.createLinearGradient(0,0,0,H); g.addColorStop(0,"#0b0e1a"); g.addColorStop(.55,"#1b1838"); g.addColorStop(1,"#3a1f2e"); x.fillStyle=g; x.fillRect(0,0,W,H);
+  // фото: лучшее одобренное фото этого дома, если есть
+  let photo=null; try{ const L=await rpc("get_comments",{p_house:b.id,p_token:null}); const best=(L||[]).filter(c=>c.photo).sort((a,b)=>b.likes-a.likes)[0]; if(best) photo={img:await loadImg(photoUrl(best.photo)),author:best.author}; }catch(e){}
+  const top=170, ph=1000;
+  x.save(); x.beginPath(); x.roundRect(60,top,W-120,ph,48); x.clip();
+  if(photo){ const im=photo.img, k=Math.max((W-120)/im.width, ph/im.height); x.drawImage(im,60+((W-120)-im.width*k)/2, top+(ph-im.height*k)/2, im.width*k, im.height*k); }
+  else { // нарисованная высотка
+    x.fillStyle="#141628"; x.fillRect(60,top,W-120,ph);
+    for(let i=0;i<70;i++){ x.fillStyle=`rgba(255,255,255,${Math.random()*.7})`; x.fillRect(60+Math.random()*(W-120), top+Math.random()*ph*.5, 3,3); }
+    const floors=b.lv, fh=Math.min(36,(ph-140)/floors), bw=330, bx=W/2-bw/2, by=top+ph-floors*fh-40;
+    x.fillStyle="#2d2f4a"; x.fillRect(bx,by,bw,floors*fh+40); x.fillStyle="#4b4f72"; x.fillRect(bx-10,by-14,bw+20,18);
+    for(let f=0;f<floors;f++) for(let k=0;k<5;k++){ x.fillStyle=((f*7+k*3)%5)?"#ffd27a":"#3a3f5c"; x.fillRect(bx+22+k*62,by+12+f*fh,34,fh*.55); }
+  }
+  x.restore();
+  x.strokeStyle="rgba(255,176,61,.6)"; x.lineWidth=4; x.beginPath(); x.roundRect(60,top,W-120,ph,48); x.stroke();
+  // шапка
+  x.fillStyle="#fff"; x.font="900 54px system-ui,sans-serif"; x.textAlign="center"; x.fillText("РУФ·РАНДОМАЙЗЕР",W/2,105);
+  x.fillStyle="#ff6a3d"; x.font="900 40px system-ui,sans-serif"; x.fillText("КАЛИНИНГРАД",W/2,152);
+  // текст
+  x.textAlign="left"; x.fillStyle="#fff"; x.font="900 64px system-ui,sans-serif";
+  let y=wrap(x,label(b),80,top+ph+110,W-160,74);
+  x.font="700 40px system-ui,sans-serif"; x.fillStyle="#ffb03d";
+  const info=[`${b.lv} этажей`, districtOf(b)?districtOf(b)+" район":"", b.year?("построен в "+String(b.year).slice(0,4)):"" ].filter(Boolean).join(" · ");
+  y=wrap(x,info,80,y+70,W-160,50);
+  if(photo){ x.font="600 32px system-ui,sans-serif"; x.fillStyle="#cfd5e1"; x.fillText("📷 вид с крыши: "+photo.author,80,y+60); y+=60; }
+  // низ
+  x.fillStyle="#ffb03d"; x.beginPath(); x.roundRect(80,H-250,W-160,120,28); x.fill();
+  x.fillStyle="#1a0d06"; x.font="900 36px system-ui,sans-serif"; x.textAlign="center";
+  x.fillText("k8899320-eng.github.io",W/2,H-200); x.fillText("/KaliningradRandomRuf",W/2,H-155);
+  x.fillStyle="#aab2c5"; x.font="600 28px system-ui,sans-serif"; x.fillText("Крути — какая высотка выпадет тебе? 🎰",W/2,H-70);
+  return await new Promise(ok=>c.toBlob(ok,"image/png"));
+}
+let storyBlob=null;
+$("storyBtn").onclick=async()=>{
+  if(!currentB) return;
+  $("storyModal").style.display="flex"; $("stImg").removeAttribute("src"); $("stShare").disabled=true;
+  try{ storyBlob=await makeStory(currentB); const u=URL.createObjectURL(storyBlob); $("stImg").src=u; $("stDl").href=u; $("stShare").disabled=false; }
+  catch(e){ toast("Не получилось сделать картинку"); }
+};
+$("stClose").onclick=()=>{ $("storyModal").style.display="none"; };
+$("stShare").onclick=async()=>{
+  if(!storyBlob) return;
+  const f=new File([storyBlob],"ruf-kld.png",{type:"image/png"});
+  try{ if(navigator.canShare&&navigator.canShare({files:[f]})){ await navigator.share({files:[f],title:"Руф·рандомайзер",text:"Калининград, "+label(currentB)}); return; } }catch(e){ if(e&&e.name==="AbortError") return; }
+  $("stDl").click();
+};
+
 // ---------- Топ видов ----------
 let topPeriod="week";
 const addrOf=hid=>{ const b=byId(hid); return b?label(b):hid; };
@@ -987,6 +1100,8 @@ document.addEventListener("click",e=>{ const n=e.target.closest("[data-nick]"); 
 let notifTimer=null;
 const NTEXT=n=>{ const d=n.data||{};
   if(n.kind==="like") return `❤️ <b>${esc(d.by||"Кто-то")}</b> лайкнул твоё фото · ${esc(addrOf(d.house))}`;
+  if(n.kind==="creply") return `↩ <b>${esc(d.by||"Кто-то")}</b> ответил на твой комментарий · ${esc(addrOf(d.house))}: «${esc(d.text||"")}»`;
+  if(n.kind==="mention") return `📣 <b>${esc(d.by||"Кто-то")}</b> упомянул тебя · ${esc(addrOf(d.house))}: «${esc(d.text||"")}»`;
   if(n.kind==="reply") return `💬 <b>${esc(d.by||"Кто-то")}</b> ответил на твою анкету: «${esc(d.text||"")}»`;
   if(n.kind==="approved") return `✅ Твоё фото одобрено и опубликовано · ${esc(addrOf(d.house))}`;
   if(n.kind==="rejected") return `❌ Твоё фото не прошло модерацию · ${esc(addrOf(d.house))}`;
@@ -1043,7 +1158,7 @@ function start(){
   loadBuildings().then(d=>{
     all=d; $("spin").textContent="🎰 Крутить"; applyFilter();
     $("slot").textContent="Нажми «Крутить» 🎰";
-    renderStats(); renderMine(); loadHod(); loadTop();
+    renderStats(); renderMine(); loadHod(); loadTop(); loadRoofers();
     const hm=location.hash.match(/^#h-(way|relation)-(\d+)$/); if(hm){ const b=byId(hm[1]+"/"+hm[2]); if(b) openHouse(b); }
   }).catch(e=>{
     all=FALLBACK; $("spin").textContent="🎰 Крутить (запасной список)"; applyFilter();
