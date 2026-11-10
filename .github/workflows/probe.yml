@@ -10,12 +10,11 @@ jobs:
           import json, urllib.parse, urllib.request
           BBOX="54.640,20.340,54.790,20.640"
           q=f'''[out:json][timeout:90];
-          (way["building"]["building:levels"~"^(1[5-9]|[2-9][0-9])$"]({BBOX});
-           way["building:part"]["building:levels"~"^(1[5-9]|[2-9][0-9])$"]({BBOX});
-           relation["building"]["building:levels"~"^(1[5-9]|[2-9][0-9])$"]({BBOX});
-           way["building"]["height"~"^([5-9][0-9]|1[0-9][0-9])"]({BBOX});
-           way["building"="construction"]["building:levels"]({BBOX});
-           way["construction"~"apartments|residential"]({BBOX}););
+          (way["building"](around:250,54.7253,20.5491);
+           way["building:part"](around:250,54.7253,20.5491);
+           way["addr:housenumber"="99"]["addr:street"~"Гагарина"];
+           node["addr:housenumber"="99"]["addr:street"~"Гагарина"];
+           relation["building"](around:250,54.7253,20.5491););
           out center tags;'''
           import time
           d=None

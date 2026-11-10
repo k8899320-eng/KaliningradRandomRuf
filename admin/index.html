@@ -66,7 +66,7 @@ const photoUrl=p=>`${SUPA}/storage/v1/object/public/roof-photos/${p}`;
 const $=id=>document.getElementById(id);
 const esc=s=>String(s==null?"":s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const dt=s=>s?new Date(s).toLocaleString("ru-RU",{day:"2-digit",month:"2-digit",year:"2-digit",hour:"2-digit",minute:"2-digit"}):"—";
-let TOKEN=null, NICK="", DATA=null, TAB="stats", ADDR={};
+let TOKEN=null, NICK="", DATA=null, TAB="stats", ADDR={}, REPN=0, UQ="";
 fetch("../buildings.json").then(r=>r.json()).then(j=>{ (j.buildings||[]).forEach(b=>ADDR[b.id]=b.street+", "+b.num); }).catch(()=>{});
 const addr=id=>ADDR[id]||id;
 try{ TOKEN=localStorage.getItem("roof_admin_token"); NICK=localStorage.getItem("roof_admin_nick")||""; }catch(e){}
@@ -99,17 +99,17 @@ function logout(){ try{ rpc("logout_user",{p_token:TOKEN}); }catch(e){} TOKEN=nu
 
 async function load(){
   if(!TOKEN) return loginView();
-  try{ DATA=await rpc("admin_overview",{p_token:TOKEN}); render(); }
+  try{ DATA=await rpc("admin_overview",{p_token:TOKEN}); try{ REPN=(await rpc("admin_reports",{p_token:TOKEN})).filter(r=>r.photo).length; }catch(e){ REPN=0; } render(); }
   catch(e){ if(/Нет доступа/.test(e.message)){ const v=await rpc("register_visit",{p_token:TOKEN}).catch(()=>null); if(v&&v.user) return claimView(); return loginView("Сессия истекла, войди снова"); } $("app").innerHTML=`<div class="empty">Ошибка: ${esc(e.message)} <button onclick="load()">Повторить</button></div>`; }
 }
 function render(){
   const d=DATA, banned=d.users.filter(u=>u.banned_until).length;
-  const tabs=[["stats","📊 Статистика",0],["pending","📷 Модерация",d.pending.length],["ankets","🤝 Анкеты",0],["users","👤 Пользователи",d.users.length],["guests","🌐 Все IP",d.guests.length],["bans","⛔ Баны",d.bans.length],["post","📣 Пост",d.post?1:0]];
+  const tabs=[["stats","📊 Статистика",0],["pending","📷 Модерация",d.pending.length],["comments","💬 Комменты",0],["reports","🚩 Жалобы",REPN],["houses","🏢 Дома",0],["ankets","🤝 Анкеты",0],["users","👤 Пользователи",d.users.length],["guests","🌐 Все IP",d.guests.length],["bans","⛔ Баны",d.bans.length],["post","📣 Пост",d.post?1:0],["log","📜 Журнал",0]];
   $("app").innerHTML=`<header><h1>Админка <span>Руф·КЛД</span></h1><button onclick="load()">↻ Обновить</button><div class="me">👑 ${esc(NICK)} · <a href="#" id="lo" style="color:var(--muted)">выйти</a> · <a href="../" style="color:var(--muted)">на сайт</a></div></header>
     <div class="tabs">${tabs.map(t=>`<button data-t="${t[0]}" class="${TAB===t[0]?"on":""}">${t[1]}${t[2]?`<span class="n">${t[2]}</span>`:""}</button>`).join("")}</div><div id="tab"></div>`;
   $("lo").onclick=e=>{ e.preventDefault(); logout(); };
   document.querySelectorAll(".tabs button").forEach(b=>b.onclick=()=>{ TAB=b.dataset.t; render(); });
-  ({stats:tabStats,pending:tabPending,ankets:tabAnkets,users:tabUsers,guests:tabGuests,bans:tabBans,post:tabPost})[TAB]();
+  ({stats:tabStats,pending:tabPending,comments:tabComments,reports:tabReports,houses:tabHouses,ankets:tabAnkets,users:tabUsers,guests:tabGuests,bans:tabBans,post:tabPost,log:tabLog})[TAB]();
 }
 function tabPending(){
   const L=DATA.pending;
@@ -172,18 +172,116 @@ async function tabAnkets(){
   };
 }
 function tabUsers(){
-  const L=DATA.users;
-  $("tab").innerHTML=L.length?`<div class="tablewrap"><table><tr><th>Ник</th><th>Последний IP</th><th>IP регистрации</th><th>Был</th><th>Комм.</th><th>Статус</th><th></th></tr>
+  const q=UQ.toLowerCase(), L=DATA.users.filter(u=>!q||u.nick.toLowerCase().includes(q)||(u.last_ip||"").includes(q)||(u.reg_ip||"").includes(q));
+  $("tab").innerHTML=`<div class="row" style="margin-bottom:10px"><input id="uq" placeholder="🔎 Ник или IP" value="${esc(UQ)}" style="flex:1"><span class="muted">${L.length} из ${DATA.users.length}</span></div>`+(L.length?`<div class="tablewrap"><table><tr><th>Ник</th><th>Последний IP</th><th>IP регистрации</th><th>Был</th><th>Комм.</th><th>Статус</th><th></th></tr>
     ${L.map(u=>`<tr><td><b>${esc(u.nick)}</b>${u.is_admin?' <span class="tag adm">админ</span>':""}<div class="muted" style="font-size:12px">с ${dt(u.created_at)}</div></td>
       <td class="ip">${esc(u.last_ip||"—")}</td><td class="ip">${esc(u.reg_ip||"—")}</td><td>${dt(u.last_seen)}</td><td>${u.comments}</td>
       <td>${u.banned_until?`<span class="tag ban">бан ${u.banned_until==="infinity"||new Date(u.banned_until).getFullYear()>3000?"навсегда":"до "+dt(u.banned_until)}</span><div class="muted" style="font-size:12px">${esc(u.ban_reason||"")}</div>`:"✅"}</td>
-      <td>${u.is_admin?"":u.banned_until?`<button class="ok" data-unban="${u.id}">Разбанить</button>`:`<button class="bad" data-ban="${u.id}">⛔ Бан</button>`}</td></tr>`).join("")}</table></div>`
-    :`<div class="empty">Пока никто не зарегистрировался</div>`;
+      <td><div class="row">${u.is_admin?"":u.banned_until?`<button class="ok" data-unban="${u.id}">Разбанить</button>`:`<button class="bad" data-ban="${u.id}">⛔ Бан</button>`}
+        <a href="../#u-${encodeURIComponent(u.nick)}" target="_blank" title="Профиль на сайте"><button>👁</button></a>
+        <button data-pw="${u.id}" title="Сбросить пароль">🔑</button>${u.is_admin?"":`<button data-purge="${u.id}" title="Удалить все его комментарии">🧹</button>`}</div></td></tr>`).join("")}</table></div>`
+    :`<div class="empty">Никого не нашлось</div>`);
+  $("uq").oninput=e=>{ UQ=e.target.value; const pos=e.target.selectionStart; tabUsers(); $("uq").focus(); $("uq").setSelectionRange(pos,pos); };
   $("tab").onclick=async e=>{
     const b=e.target.closest("[data-ban]"), ub=e.target.closest("[data-unban]");
     if(b){ const u=DATA.users.find(x=>x.id==b.dataset.ban); banDialog(`${u.nick} (IP ${u.last_ip||"?"})`,{p_user:u.id,p_ip:null}); }
     if(ub){ try{ await rpc("admin_unban",{p_token:TOKEN,p_user:+ub.dataset.unban,p_ip:null}); load(); }catch(err){ alertMsg(err.message); } }
+    const pw=e.target.closest("[data-pw]"), pg=e.target.closest("[data-purge]");
+    if(pw){ const u=DATA.users.find(x=>x.id==pw.dataset.pw); if(!confirm(`Сбросить пароль для ${u.nick}? Его выкинет из аккаунта, а ты получишь новый пароль, чтобы передать ему.`)) return;
+      try{ const r=await rpc("admin_reset_password",{p_token:TOKEN,p_user:u.id}); alertMsg(`Новый пароль для ${u.nick}: ${r.password}\n\nПередай ему лично и попроси сменить потом (пока смены нет — пусть просто помнит этот).`); }catch(err){ alertMsg(err.message); } }
+    if(pg){ const u=DATA.users.find(x=>x.id==pg.dataset.purge); if(!confirm(`Удалить ВСЕ комментарии и фото пользователя ${u.nick}? Это не отменить.`)) return;
+      try{ const r=await rpc("admin_purge_user",{p_token:TOKEN,p_user:u.id}); alertMsg(`Удалено: ${r.deleted}`); load(); }catch(err){ alertMsg(err.message); } }
   };
+}
+// ---------- Комментарии ----------
+let CQ="";
+async function tabComments(){
+  $("tab").innerHTML=`<div class="row" style="margin-bottom:10px"><input id="cq" placeholder="🔎 Ник, текст или id дома (way/…)" value="${esc(CQ)}" style="flex:1"><button id="cgo2" class="pri">Найти</button></div><div id="clist2" class="empty">Загружаю…</div>`;
+  const go=async()=>{ CQ=$("cq").value; $("clist2").innerHTML='<div class="empty">Загружаю…</div>';
+    let L=[]; try{ L=await rpc("admin_list_comments",{p_token:TOKEN,p_q:CQ,p_limit:200}); }catch(e){ $("clist2").innerHTML=`<div class="empty">${esc(e.message)}</div>`; return; }
+    $("clist2").className=""; $("clist2").innerHTML=L.length?`<div class="muted" style="margin-bottom:8px">Показано: ${L.length}${L.length>=200?" (последние 200)":""}</div>`+L.map(c=>`<div class="card" style="display:flex;gap:10px;align-items:flex-start">
+      ${c.photo?`<img src="${photoUrl(c.photo)}" data-full="${photoUrl(c.photo)}" loading="lazy" style="width:84px;height:84px;object-fit:cover;border-radius:10px;cursor:zoom-in;flex:none">`:""}
+      <div style="flex:1;min-width:0"><div class="meta" style="margin-top:0"><b style="color:var(--accent2)">${esc(c.author)}</b> · ${dt(c.created_at)} · <a href="../#h-${esc(c.house_id.replace("/","-"))}" target="_blank" style="color:var(--muted)">${esc(addr(c.house_id))}</a>
+        ${c.photo?` · <span class="tag">${{approved:"✅ фото",pending:"⏳ на модерации",rejected:"❌ отклонено"}[c.photo_status]||c.photo_status}</span>`:""}${c.likes?` · ❤️ ${c.likes}`:""}${c.reports?` · <span class="tag ban">🚩 ${c.reports}</span>`:""}${c.reply_to?" · ↩ ответ":""}</div>
+        <div style="word-break:break-word">${c.body&&c.body!=="📷"?esc(c.body):'<span class="muted">(только фото)</span>'}</div></div>
+      <button class="bad" data-del="${c.id}" title="Удалить">🗑</button></div>`).join(""):'<div class="empty">Ничего не найдено</div>';
+  };
+  $("cgo2").onclick=go; $("cq").onkeydown=e=>{ if(e.key==="Enter") go(); };
+  $("tab").onclick=async e=>{
+    const im=e.target.closest("img[data-full]"); if(im){ $("lbimg").src=im.dataset.full; $("lb").style.display="flex"; return; }
+    const dl=e.target.closest("[data-del]"); if(!dl) return; if(!confirm("Удалить комментарий?")) return;
+    try{ await rpc("admin_delete_comment",{p_token:TOKEN,p_comment:+dl.dataset.del}); dl.closest(".card").remove(); }catch(err){ alertMsg(err.message); }
+  };
+  go();
+}
+// ---------- Жалобы ----------
+async function tabReports(){
+  $("tab").innerHTML='<div class="empty">Загружаю…</div>';
+  let L=[]; try{ L=await rpc("admin_reports",{p_token:TOKEN}); }catch(e){ $("tab").innerHTML=`<div class="empty">${esc(e.message)}</div>`; return; }
+  $("tab").innerHTML=`<div class="muted" style="margin-bottom:10px">После 3 жалоб фото само уходит обратно на модерацию (скрывается с сайта).</div>`+(L.length?`<div class="grid">${L.map(c=>`<div class="card">
+    ${c.photo?`<div class="ph"><img src="${photoUrl(c.photo)}" data-full="${photoUrl(c.photo)}" loading="lazy"></div>`:'<div class="empty">фото уже удалено</div>'}
+    <div class="meta"><span class="tag ban">🚩 ${c.n}</span> · <b style="color:var(--accent2)">${esc(c.author)}</b> · ${esc(addr(c.house_id))} · ${c.photo_status==="approved"?"✅ на сайте":"⏳ скрыто"}</div>
+    <div class="meta">Пожаловались: ${esc(c.who||"")}</div>
+    <div class="row"><button class="ok" data-keep="${c.id}">✅ Оставить фото</button><button class="bad" data-rj="${c.id}">❌ Убрать фото</button><button data-del="${c.id}">🗑 Удалить коммент</button></div></div>`).join("")}</div>`:'<div class="empty">🎉 Жалоб нет</div>');
+  $("tab").onclick=async e=>{
+    const im=e.target.closest("img[data-full]"); if(im){ $("lbimg").src=im.dataset.full; $("lb").style.display="flex"; return; }
+    const k=e.target.closest("[data-keep]"), rj=e.target.closest("[data-rj]"), dl=e.target.closest("[data-del]");
+    try{
+      if(k) await rpc("admin_clear_reports",{p_token:TOKEN,p_comment:+k.dataset.keep,p_restore:true});
+      else if(rj){ await rpc("admin_moderate",{p_token:TOKEN,p_comment:+rj.dataset.rj,p_approve:false}); await rpc("admin_clear_reports",{p_token:TOKEN,p_comment:+rj.dataset.rj,p_restore:false}); }
+      else if(dl){ if(!confirm("Удалить комментарий целиком?")) return; await rpc("admin_delete_comment",{p_token:TOKEN,p_comment:+dl.dataset.del}); }
+      else return;
+      load();
+    }catch(err){ alertMsg(err.message); }
+  };
+}
+// ---------- Дома ----------
+let HMAP=null, HMARK=null;
+function leaflet(){ return window.L?Promise.resolve():new Promise((ok,bad)=>{ const c=document.createElement("link"); c.rel="stylesheet"; c.href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"; document.head.appendChild(c);
+  const s=document.createElement("script"); s.src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"; s.onload=ok; s.onerror=bad; document.head.appendChild(s); }); }
+async function tabHouses(edit){
+  let L=[]; try{ L=await rpc("admin_list_houses",{p_token:TOKEN}); }catch(e){ $("tab").innerHTML=`<div class="empty">${esc(e.message)}</div>`; return; }
+  const h=edit||{};
+  $("tab").innerHTML=`<div class="card"><b>${h.id?"✏️ Изменить дом":"➕ Добавить дом в рулетку"}</b>
+    <div class="muted" style="font-size:13px;margin:4px 0 10px">Для новостроек, которых ещё нет в OpenStreetMap. Нажми на карту, чтобы поставить точку, или впиши координаты (можно скопировать из Яндекс/Google Карт: «54.7381, 20.4916»).</div>
+    <div style="display:grid;grid-template-columns:2fr 1fr 1fr;gap:8px">
+      <input id="hs" placeholder="Улица (как на табличке): улица Гайдара" value="${esc(h.street||"")}"><input id="hn" placeholder="Дом: 94" value="${esc(h.num||"")}"><input id="hl" type="number" min="1" max="100" placeholder="Этажей" value="${h.lv||""}">
+      <input id="hc" placeholder="Координаты: 54.7381, 20.4916" value="${h.lat?h.lat+", "+h.lon:""}" style="grid-column:span 2"><select id="hd"><option value="">Район — авто</option>${["Ленинградский","Московский","Центральный"].map(x=>`<option ${h.d===x?"selected":""}>${x}</option>`).join("")}</select>
+      <input id="hy" placeholder="Год постройки" value="${esc(h.year||"")}"><input id="hnm" placeholder="Название ЖК (необязательно)" value="${esc(h.name||"")}" style="grid-column:span 2">
+      <input id="hno" placeholder="Заметка для себя (источник и т.п.)" value="${esc(h.note||"")}" style="grid-column:span 3">
+    </div>
+    <div id="hmap" style="height:300px;border-radius:12px;margin:10px 0;background:#0f1218"></div>
+    <div class="row"><button class="pri" id="hsave">${h.id?"💾 Сохранить":"➕ Добавить"}</button>${h.id?'<button id="hcancel">Отмена</button>':""}<span id="hmsg" class="msg"></span></div></div>
+    <h3 style="margin:16px 0 8px">Добавленные вручную: ${L.length}</h3>
+    ${L.length?`<div class="tablewrap"><table><tr><th>Адрес</th><th>Эт.</th><th>Район</th><th>ЖК / заметка</th><th></th></tr>${L.map(x=>`<tr><td><b>${esc(x.street)}, ${esc(x.num)}</b><div class="muted ip">${x.lat.toFixed(5)}, ${x.lon.toFixed(5)}</div></td><td>${x.lv}</td><td>${esc(x.d||"авто")}</td><td>${esc(x.name||"")}<div class="muted" style="font-size:12px">${esc(x.note||"")}</div></td>
+      <td><div class="row"><button data-he="${x.id}">✏️</button><button class="bad" data-hd="${x.id}">🗑</button></div></td></tr>`).join("")}</table></div>`:'<div class="empty">Пока пусто</div>'}`;
+  const parse=()=>{ const m=$("hc").value.match(/(-?\d+[.,]\d+)\s*[,; ]\s*(-?\d+[.,]\d+)/); return m?[+m[1].replace(",","."),+m[2].replace(",",".")]:null; };
+  leaflet().then(()=>{
+    if(!$("hmap")) return; HMAP=L_map(); 
+  }).catch(()=>{ $("hmap").innerHTML='<div class="empty">Карта не загрузилась — впиши координаты руками</div>'; });
+  function L_map(){
+    const c=parse()||[54.7104,20.4522]; const m=window.L.map("hmap").setView(c,parse()?16:12);
+    window.L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png",{maxZoom:19,attribution:"© OpenStreetMap © CARTO"}).addTo(m);
+    HMARK=parse()?window.L.marker(c).addTo(m):null;
+    L.forEach(x=>window.L.circleMarker([x.lat,x.lon],{radius:5,color:"#ffb03d"}).addTo(m).bindTooltip(x.street+", "+x.num));
+    m.on("click",e=>{ const ll=e.latlng; $("hc").value=ll.lat.toFixed(6)+", "+ll.lng.toFixed(6); if(HMARK) HMARK.setLatLng(ll); else HMARK=window.L.marker(ll).addTo(m); });
+    $("hc").onchange=()=>{ const p=parse(); if(p){ if(HMARK) HMARK.setLatLng(p); else HMARK=window.L.marker(p).addTo(m); m.setView(p,16); } };
+    return m;
+  }
+  $("hsave").onclick=async()=>{ const c=parse(); if(!c){ $("hmsg").textContent="Поставь точку на карте или впиши координаты"; return; }
+    try{ await rpc("admin_save_house",{p_token:TOKEN,p_id:h.id||null,p_street:$("hs").value,p_num:$("hn").value,p_lv:+$("hl").value,p_lat:c[0],p_lon:c[1],p_d:$("hd").value,p_year:$("hy").value,p_name:$("hnm").value,p_note:$("hno").value}); tabHouses(); }
+    catch(e){ $("hmsg").textContent=e.message; } };
+  if($("hcancel")) $("hcancel").onclick=()=>tabHouses();
+  $("tab").onclick=async e=>{ const ed=e.target.closest("[data-he]"), de=e.target.closest("[data-hd]");
+    if(ed){ tabHouses(L.find(x=>x.id==ed.dataset.he)); window.scrollTo(0,0); }
+    if(de){ if(!confirm("Убрать дом из рулетки?")) return; try{ await rpc("admin_delete_house",{p_token:TOKEN,p_id:+de.dataset.hd}); tabHouses(); }catch(err){ alertMsg(err.message); } } };
+}
+// ---------- Журнал ----------
+async function tabLog(){
+  $("tab").innerHTML='<div class="empty">Загружаю…</div>';
+  let L=[]; try{ L=await rpc("admin_log_list",{p_token:TOKEN}); }catch(e){ $("tab").innerHTML=`<div class="empty">${esc(e.message)}</div>`; return; }
+  $("tab").innerHTML=L.length?`<div class="tablewrap"><table><tr><th>Когда</th><th>Кто</th><th>Действие</th><th>Подробности</th></tr>${L.map(x=>`<tr><td style="white-space:nowrap">${dt(x.created_at)}</td><td>${esc(x.nick||"—")}</td><td>${esc(x.action)}</td><td class="muted">${esc(x.detail||"")}</td></tr>`).join("")}</table></div>`
+    :'<div class="empty">Журнал пуст — сюда будут записываться баны, удаления, модерация и т.д.</div>';
 }
 function tabGuests(){
   const nickByIp={}; DATA.users.forEach(u=>{ if(u.last_ip) (nickByIp[u.last_ip]=nickByIp[u.last_ip]||[]).push(u.nick); });
@@ -231,7 +329,7 @@ function banDialog(who,args){
     try{ await rpc("admin_ban",Object.assign({p_token:TOKEN,p_hours:+$("bd").value,p_reason:reason},args)); $("modal").style.display="none"; load(); }catch(e){ $("bmsg").textContent=e.message; }
   };
 }
-function alertMsg(t){ $("mbox").innerHTML=`<div>${esc(t)}</div><button onclick="document.getElementById('modal').style.display='none'">OK</button>`; $("modal").style.display="flex"; }
+function alertMsg(t){ $("mbox").innerHTML=`<div style="white-space:pre-wrap">${esc(t)}</div><button onclick="document.getElementById('modal').style.display='none'">OK</button>`; $("modal").style.display="flex"; }
 load();
 </script>
 </body>

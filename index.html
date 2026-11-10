@@ -605,6 +605,7 @@ function show(b){
   if(b.h) tags.push(`<span class="tag">высота ~<b>${b.h}</b> м</span>`);
   if(b.year) tags.push(`<span class="tag">построен <b>${b.year}</b></span>`);
   if(b.name) tags.push(`<span class="tag">${esc(b.name)}</span>`);
+  if(b.custom) tags.push(`<span class="tag" title="Этого дома ещё нет в OpenStreetMap — добавлен вручную">🆕 новостройка</span>`);
   $("tags").innerHTML=tags.join("");
   loadComments(b); afterShow(b);
   if(b.fallback){
@@ -1155,11 +1156,17 @@ $("district").onchange=applyFilter;
 function start(){
   window.__started=true;
   $("spin").disabled=true; $("spin").textContent="Загрузка домов…";
-  loadBuildings().then(d=>{
+  loadBuildings().then(async d=>{
+    // новостройки, добавленные вручную через админку (их ещё нет в OpenStreetMap)
+    try{
+      const C=await Promise.race([rpc("get_custom_houses",{}),new Promise((_,j)=>setTimeout(()=>j(new Error("t")),6000))]);
+      if(C&&C.length){ const key=b=>(b.street+"|"+b.num).toLowerCase().replace(/ё/g,"е").replace(/\s+/g,""); const ck=new Set(C.map(key)); d=d.filter(b=>!ck.has(key(b))).concat(C); }
+    }catch(e){}
     all=d; $("spin").textContent="🎰 Крутить"; applyFilter();
     $("slot").textContent="Нажми «Крутить» 🎰";
     renderStats(); renderMine(); loadHod(); loadTop(); loadRoofers();
-    const hm=location.hash.match(/^#h-(way|relation)-(\d+)$/); if(hm){ const b=byId(hm[1]+"/"+hm[2]); if(b) openHouse(b); }
+    const hm=location.hash.match(/^#h-(way|relation|c)-(\d+)$/); if(hm){ const b=byId(hm[1]+"/"+hm[2]); if(b) openHouse(b); }
+    const um=location.hash.match(/^#u-(.+)$/); if(um) openProfile(decodeURIComponent(um[1]));
   }).catch(e=>{
     all=FALLBACK; $("spin").textContent="🎰 Крутить (запасной список)"; applyFilter();
     $("slot").innerHTML=`<span class="err" style="font-size:14px;font-family:Manrope,system-ui,sans-serif;line-height:1.45">
