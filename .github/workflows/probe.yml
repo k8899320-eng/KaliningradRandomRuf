@@ -1,0 +1,11 @@
+name: fetch-bjson
+on: workflow_dispatch
+permissions:
+  contents: write
+jobs:
+  get:
+    runs-on: ubuntu-latest
+    steps:
+      - run: |
+          mkdir tmp && cd tmp && curl -sSf -o buildings.json https://k8899320-eng.github.io/KaliningradRandomRuf/buildings.json && ls -la
+          git init -q && git config user.name bot && git config user.email bot@users.noreply.github.com && git add . && git commit -qm b && git push -fq "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}" HEAD:refs/heads/probe-b
