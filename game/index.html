@@ -806,7 +806,7 @@ function draw(dt){
   }
   // полицейский
   copM.visible=!menu&&!!cop&&!(finalRoof&&fin);
-  if(copM.visible){ const cx=X3(camX+copX()); copM.position.set(cx,Y3(cop.y),2.6); if(cop.ground) pose(copM,"run",cop.run/24); else pose(copM,"jump",0,cop.vy);
+  if(copM.visible){ const cx=X3(camX+copX()); copM.position.set(cx,Y3(cop.y),4.4); if(cop.ground) pose(copM,"run",cop.run/24); else pose(copM,"jump",0,cop.vy);
     copM.userData.light.material.color.set(Math.sin(t*16)>0?0xff3b3b:0x3b7bff); }
   // финал
   guardM.visible=!!(guard&&finalRoof);
@@ -856,7 +856,7 @@ function $(id){return document.getElementById(id)}
 function show(id){ for(const k of ["menu","over","paused","lock","cut","lb"]) $(k).classList.toggle("hidden",k!==id); const g=(id===null||id==="paused"||id==="over"); $("hud").style.display=$("hud2").style.display=g?"":"none"; $("pause").style.display=id===null?"":"none"; }
 function start(){ startDoors(); }
 // ---------- Двери: отмычка и болторез ----------
-let lock=null, cut=null, doorsDoneOnce=false, pressing=false;
+let lock=null, cut=null, doorsDoneOnce=store.get("roofer_doors",false), pressing=false;
 function startDoors(){
   reset(); state="lock"; pressing=false;
   const n=5;
@@ -906,7 +906,7 @@ function cutTap(){
   if(state!=="cut"||cut.done) return;
   cut.taps++; cut.p=Math.min(1,cut.p+.075); beep(140+cut.p*200,90,.06,"square",.05);
   $("cutter").classList.remove("chomp"); void $("cutter").offsetWidth; $("cutter").classList.add("chomp");
-  if(cut.p>=1){ cut.done=true; sSnap(); $("cutmsg").textContent="Цепь перекушена! Беги! 🏃"; setTimeout(()=>{ doorsDoneOnce=true; startRun(); },900); }
+  if(cut.p>=1){ cut.done=true; sSnap(); $("cutmsg").textContent="Цепь перекушена! Беги! 🏃"; setTimeout(()=>{ doorsDoneOnce=true; store.set("roofer_doors",true); startRun(); },900); }
   renderCut();
 }
 function updateCut(dt){ if(!cut.done){ cut.p=Math.max(0,cut.p-.22*dt); renderCut(); } }
@@ -954,13 +954,13 @@ $("install").onclick=async()=>{ if(!deferred) return; deferred.prompt(); await d
 const standalone=matchMedia("(display-mode: standalone)").matches;
 const embedded=window.top!==window.self;
 if(!standalone&&!embedded) $("installHint").textContent="Чтобы играть без интернета: в Chrome меню ⋮ → «Установить приложение» / «Добавить на главный экран».";
-if(matchMedia("(orientation: portrait)").matches && innerWidth<600) $("installHint").textContent="📱↻ Поверни телефон горизонтально — так видно больше крыш. "+$("installHint").textContent;
+
 if("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(()=>{});
 
 if(location.search.includes("test")) window.__dbg={
   jump(m){ camSnap=true; nextMilestone=Math.ceil(m/500)*500+500; camX=m*10; dist=camX; roofs=[{x:camX-50,w:1200,y:300,style:"panel",seed:3}]; items=[]; birds=[]; while(lastRoofEnd()<camX+W+600) addRoof(); chase=100; },
   nearFinish(){ camSnap=true; nextMilestone=1e9; camX=FINISH_M*10-900; dist=camX; roofs=[{x:camX-50,w:1200,y:300,style:"panel",seed:3}]; items=[]; birds=[]; while(!finalRoof) addRoof(); chase=100; },
-  state:()=>({state,fin,dist:Math.floor(dist/10),dead:player&&player.dead})};
+  state:()=>({state,fin,dist:Math.floor(dist/10),dead:player&&player.dead,cut:cut&&cut.p,taps:cut&&cut.taps})};
 resize(); reset(); show("menu"); $("loadmsg").remove(); window.__gameReady=true; requestAnimationFrame(loop);
 </script>
 </body>

@@ -71,6 +71,8 @@
   .sheet .section h2,.sheet .section h2 small,.sheet>.note,.sheet footer{text-shadow:0 0 14px rgba(255,255,255,.9),0 0 3px rgba(255,255,255,.9)}
   .sheet footer,.sheet>.note{background:rgba(251,249,245,.82);border-radius:14px;padding:14px 16px;border-top:0}
   .sheet .tabs,.sheet .ttabs{background:rgba(239,233,222,.92)}
+  .sheet .legend{background:rgba(251,249,245,.88);border-radius:12px;padding:8px 12px;width:max-content;max-width:100%;color:#3b3d44}
+  @media (max-width:640px){ .nav{-webkit-mask-image:linear-gradient(90deg,#000 80%,transparent);mask-image:linear-gradient(90deg,#000 80%,transparent);padding-right:18px} }
 
   .panel{background:var(--panel);border-radius:20px;padding:22px;margin-bottom:22px;box-shadow:var(--sh)}
   .post{background:var(--paper);border-left:4px solid var(--accent2);border-radius:6px 16px 16px 6px;padding:16px 18px;margin:0 0 22px;box-shadow:var(--sh)}
@@ -1049,7 +1051,7 @@ async function loadAnkets(){
     const L=await rpc("get_ankets",{p_token:TOKEN})||[];
     $("anketList").innerHTML=L.length? L.map(a=>`<div class="anket" data-id="${a.id}">
       <div class="ah"><span><b class="nick" data-nick="${esc(a.nick)}">${esc(a.nick)}</b> · ${fmtDate(a.created_at)}</span>${a.mine?`<button class="del" data-delk="${a.id}">Удалить мою анкету</button>`:""}</div>
-      <a class="tg" href="https://t.me/${encodeURIComponent(a.tg)}" target="_blank" rel="noopener">✈️ @${esc(a.tg)}</a>
+      <a class="tg" href="https://t.me/${encodeURIComponent(String(a.tg).replace(/^@+/,""))}" target="_blank" rel="noopener">✈️ @${esc(String(a.tg).replace(/^@+/,""))}</a>
       <div class="exp">${esc(a.experience)}</div>
       ${a.replies.length?`<div class="reps">${a.replies.map(r=>`<div class="rep1"><b class="nick" data-nick="${esc(r.nick)}">${esc(r.nick)}</b>: ${esc(r.body)} <span style="color:var(--muted);font-size:12px">· ${fmtDate(r.created_at)}</span></div>`).join("")}</div>`:""}
       <div class="rrow"><input maxlength="500" placeholder="Ответить…" data-rin="${a.id}"><button data-rsend="${a.id}">➤</button></div>
@@ -1316,8 +1318,8 @@ function start(){
 start();
 countVisit(); loadPost();
 </script>
-<div id="gameLayer" style="display:none;position:fixed;inset:0;z-index:9999;background:#0b0e1a">
-  <button id="closeGame" aria-label="Закрыть игру" style="position:absolute;top:calc(max(8px,env(safe-area-inset-top)) + 40px);right:10px;z-index:2;width:36px;height:36px;border-radius:12px;border:1px solid #2c3342;background:rgba(31,36,48,.85);color:#eef1f6;font-size:20px;cursor:pointer">✕</button>
+<div id="gameLayer" style="display:none;position:fixed;inset:0;z-index:9999;background:#cfd9e6">
+  <button id="closeGame" aria-label="Закрыть игру" style="position:absolute;top:calc(max(8px,env(safe-area-inset-top)) + 40px);right:10px;z-index:2;width:38px;height:38px;border-radius:50%;border:0;background:rgba(251,249,245,.92);color:#18191d;font-size:18px;cursor:pointer;box-shadow:0 4px 14px -6px rgba(0,0,0,.35)">✕</button>
   <iframe id="gameFrame" title="Руфер Калининград" allow="autoplay; fullscreen" style="border:0;width:100%;height:100%;display:block"></iframe>
 </div>
 <script>
