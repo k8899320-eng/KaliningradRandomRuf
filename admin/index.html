@@ -67,7 +67,7 @@ const $=id=>document.getElementById(id);
 const esc=s=>String(s==null?"":s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const dt=s=>s?new Date(s).toLocaleString("ru-RU",{day:"2-digit",month:"2-digit",year:"2-digit",hour:"2-digit",minute:"2-digit"}):"—";
 let TOKEN=null, NICK="", DATA=null, TAB="stats", ADDR={}, REPN=0, UQ="";
-fetch("../buildings.json").then(r=>r.json()).then(j=>{ (j.buildings||[]).forEach(b=>ADDR[b.id]=b.street+", "+b.num); }).catch(()=>{});
+fetch("../buildings.json").then(r=>r.json()).then(j=>{ (j.buildings||[]).forEach(b=>ADDR[b.id]=(b.city&&b.city!=="Калининград"?b.city+", ":"")+(b.street?b.street+(b.num?", "+b.num:""):(b.name||b.id))); }).catch(()=>{});
 const addr=id=>ADDR[id]||id;
 try{ TOKEN=localStorage.getItem("roof_admin_token"); NICK=localStorage.getItem("roof_admin_nick")||""; }catch(e){}
 async function rpc(name,args){

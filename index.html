@@ -285,8 +285,19 @@
 
   <div class="controls">
     <button class="spin" id="spin" disabled>Загрузка домов…</button>
-    <label class="f">Этажей от
+    <label class="f">Что
+      <select id="cat">
+        <option value="res">🏢 Жилые</option>
+        <option value="mall">🛍 ТЦ</option>
+        <option value="hotel">🏨 Отели</option>
+        <option value="tower">🗼 Башни</option>
+        <option value="">✨ Всё подряд</option>
+      </select>
+    </label>
+    <label class="f" id="minLvBox">Этажей от
       <select id="minLv">
+        <option value="5">5</option>
+        <option value="7">7</option>
         <option value="9">9</option>
         <option value="10" selected>10</option>
         <option value="12">12</option>
@@ -295,12 +306,17 @@
         <option value="20">20</option>
       </select>
     </label>
-    <label class="f">Район
+    <label class="f">Где
       <select id="district">
-        <option value="">Все</option>
-        <option>Центральный</option>
-        <option>Ленинградский</option>
-        <option>Московский</option>
+        <option value="">Калининград — весь</option>
+        <option value="Центральный">· Центральный р-н</option>
+        <option value="Ленинградский">· Ленинградский р-н</option>
+        <option value="Московский">· Московский р-н</option>
+        <option value="@Светлогорск">Светлогорск</option>
+        <option value="@Зеленоградск">Зеленоградск</option>
+        <option value="@Советск">Советск</option>
+        <option value="@Балтийск">Балтийск</option>
+        <option value="*">🌍 Вся область</option>
       </select>
     </label>
     <button class="nearbtn" id="nearBtn" type="button">📍 Рядом со мной</button>
@@ -309,7 +325,7 @@
   <div id="nearList" class="nearlist" style="display:none"></div>
 
   <div class="slot" id="slot">Нажми «Крутить» 🎰</div>
-  <div class="search"><input id="q" type="search" placeholder="🔎 Найти дом по адресу: Гайдара, Московский 1…" autocomplete="off"></div>
+  <div class="search"><input id="q" type="search" placeholder="🔎 Адрес или название: Гайдара 90, Европа, Светлогорск…" autocomplete="off"></div>
   <div id="qres" class="nearlist" style="display:none"></div>
   </div>
 
@@ -562,6 +578,7 @@ let leafletReady=false, pendingMap=null;
 })();
 
 function districtOf(b){
+  if(b.city&&b.city!=="Калининград") return "";
   if(b.d) return b.d;
   if(b.lat==null) return "";
   // запасное приблизительное определение, если в данных нет района
@@ -569,13 +586,28 @@ function districtOf(b){
   return b.lon < 20.49 ? "Центральный" : "Ленинградский";
 }
 function applyFilter(){
-  const min = +$("minLv").value, dist = $("district").value;
-  pool = all.filter(b=>b.lv>=min && (!dist || districtOf(b)===dist));
-  $("count").textContent = `в барабане: ${pool.length} домов`;
+  const min = +$("minLv").value, dist = $("district").value, cat = $("cat").value;
+  $("minLvBox").style.opacity = cat==="res"||cat===""?"":"0.4";
+  pool = all.filter(b=>{
+    if(cat && catOf(b)!==cat) return false;
+    if(isRes(b) && b.lv<min) return false;
+    if(dist==="*") return true;
+    if(dist.startsWith("@")) return cityOf(b)===dist.slice(1);
+    if(cityOf(b)!=="Калининград") return false;
+    return !dist || districtOf(b)===dist;
+  });
+  $("count").textContent = `в барабане: ${pool.length}`;
   $("spin").disabled = !pool.length;
 }
 
-const label = b => `${b.street}, ${b.num}`;
+const label = b => b.street ? `${b.street}${b.num?", "+b.num:""}` : (b.name||"без адреса");
+const cityOf = b => b.city||"Калининград";
+const full = b => `${cityOf(b)}, ${label(b)}`;
+const CATS={res:["🏢","Жилой дом"],mall:["🛍","ТЦ"],hotel:["🏨","Отель"],tower:["🗼","Башня"]};
+const catOf = b => b.cat||"res";
+const isRes = b => catOf(b)==="res";
+const lvs = b => b.lv ? b.lv+" эт" : CATS[catOf(b)][0];
+const lvLong = b => b.lv ? b.lv+" этажей" : "этажность неизвестна";
 
 async function spin(){
   if(!pool.length) return;
@@ -600,8 +632,10 @@ async function spin(){
 function show(b){
   const card=$("card");
   card.classList.remove("show"); void card.offsetWidth; card.classList.add("show");
-  $("addr").textContent = `Калининград, ${label(b)}`;
-  const tags=[`<span class="tag"><b>${b.lv}</b> этажей</span>`];
+  $("addr").textContent = full(b);
+  const tags=[];
+  if(!isRes(b)) tags.push(`<span class="tag">${CATS[catOf(b)].join(" ")}</span>`);
+  tags.push(b.lv?`<span class="tag"><b>${b.lv}</b> этажей</span>`:`<span class="tag">этажность неизвестна</span>`);
   if(b.h) tags.push(`<span class="tag">высота ~<b>${b.h}</b> м</span>`);
   if(b.year) tags.push(`<span class="tag">построен <b>${b.year}</b></span>`);
   if(b.name) tags.push(`<span class="tag">${esc(b.name)}</span>`);
@@ -609,7 +643,7 @@ function show(b){
   $("tags").innerHTML=tags.join("");
   loadComments(b); afterShow(b);
   if(b.fallback){
-    const t=encodeURIComponent(`Калининград, ${label(b)}`);
+    const t=encodeURIComponent(full(b));
     $("links").innerHTML=`
       <a href="https://yandex.ru/maps/22/kaliningrad/?text=${t}" target="_blank" rel="noopener">🗺 Яндекс Карты (там есть панорама)</a>
       <a href="https://www.google.com/maps/search/?api=1&query=${t}" target="_blank" rel="noopener">🌐 Google Карты</a>
@@ -628,7 +662,7 @@ function show(b){
     <a href="${ym}" target="_blank" rel="noopener">🗺 Яндекс Карты</a>
     <a href="https://www.openstreetmap.org/${b.id}" target="_blank" rel="noopener">OSM</a>
     <button id="copy">📋 Копировать адрес</button>`;
-  $("copy").onclick=()=>{ if(navigator.clipboard) navigator.clipboard.writeText(`Калининград, ${label(b)}`).then(()=>$("copy").textContent="✅ Скопировано").catch(()=>{}); };
+  $("copy").onclick=()=>{ if(navigator.clipboard) navigator.clipboard.writeText(full(b)).then(()=>$("copy").textContent="✅ Скопировано").catch(()=>{}); };
   drawMap(b);
   loadPhotos(b);
 }
@@ -815,7 +849,7 @@ function renderMine(){
   document.querySelectorAll(".tabs button").forEach(b=>b.classList.toggle("on",b.dataset.t===mineTab));
   const ids=mineTab==="fav"?favs:mineTab==="been"?beenIds:hist, list=ids.map(byId).filter(Boolean);
   if(mineTab==="been"&&list.length){ $("mineList").innerHTML=`<div class="empty" style="padding:0 2px 4px">🏢 Твоя коллекция: <b style="color:var(--accent2)">${beenIds.length}</b> из ${all.length} высоток</div>`+list.map(b=>`<div class="mrow" data-id="${b.id}"><span class="lv">${b.lv} эт</span><span class="a">${esc(label(b))}</span><span>✅</span></div>`).join(""); return; }
-  $("mineList").innerHTML=list.length? list.map(b=>`<div class="mrow" data-id="${b.id}"><span class="lv">${b.lv} эт</span><span class="a">${esc(label(b))}${b.name?` · <span style="color:var(--muted)">${esc(b.name)}</span>`:""}</span>${mineTab==="fav"?`<button class="x" data-unfav="${b.id}" title="Убрать">✕</button>`:""}</div>`).join("")
+  $("mineList").innerHTML=list.length? list.map(b=>`<div class="mrow" data-id="${b.id}"><span class="lv">${lvs(b)}</span><span class="a">${esc(label(b))}${b.name&&b.name!==label(b)?` · <span style="color:var(--muted)">${esc(b.name)}</span>`:""}</span>${mineTab==="fav"?`<button class="x" data-unfav="${b.id}" title="Убрать">✕</button>`:""}</div>`).join("")
     : `<div class="empty">${mineTab==="fav"?"Пока пусто. Нажми «☆ В избранное» у понравившегося дома.":mineTab==="been"?"Отмечай дома кнопкой «✅ Я тут был» — соберёшь свою коллекцию.":"Здесь появятся дома, которые тебе выпадали."}</div>`;
 }
 document.querySelectorAll(".tabs button").forEach(b=>b.onclick=()=>{ mineTab=b.dataset.t; renderMine(); });
@@ -829,7 +863,7 @@ $("favBtn").onclick=()=>{ if(!currentB) return; if(favs.includes(currentB.id)){ 
 const hashOf=b=>"h-"+b.id.replace("/","-");
 $("shareBtn").onclick=async()=>{
   if(!currentB) return;
-  const url=location.origin+location.pathname+"#"+hashOf(currentB), text="Калининград, "+label(currentB)+" — "+currentB.lv+" этажей";
+  const url=location.origin+location.pathname+"#"+hashOf(currentB), text=full(currentB)+(currentB.lv?" — "+currentB.lv+" этажей":"");
   try{ if(navigator.share){ await navigator.share({title:"Руф-рандомайзер",text,url}); return; } }catch(e){ if(e&&e.name==="AbortError") return; }
   try{ await navigator.clipboard.writeText(url); toast("🔗 Ссылка на дом скопирована"); }catch(e){ prompt("Скопируй ссылку:",url); }
 };
@@ -859,10 +893,10 @@ $("nearBtn").onclick=()=>{
   box.style.display="grid"; box.innerHTML='<div class="empty">Определяю, где ты… (разреши доступ к геолокации)</div>';
   navigator.geolocation.getCurrentPosition(pos=>{
     const la=pos.coords.latitude, lo=pos.coords.longitude, min=+$("minLv").value;
-    const L=all.filter(b=>b.lat!=null&&b.lv>=min).map(b=>({b,d:dist(la,lo,b.lat,b.lon)})).sort((x,y)=>x.d-y.d).slice(0,8);
+    const cat=$("cat").value; const L=all.filter(b=>b.lat!=null&&(!cat||catOf(b)===cat)&&(isRes(b)?b.lv>=min:true)).map(b=>({b,d:dist(la,lo,b.lat,b.lon)})).sort((x,y)=>x.d-y.d).slice(0,8);
     box.dataset.ok="1";
-    box.innerHTML=(L.length&&L[0].d<30000)?`<div class="empty" style="padding:0 2px">Ближайшие высотки от ${min} этажей:</div>`+L.map(x=>`<div class="mrow" data-id="${x.b.id}"><span class="lv">${x.b.lv} эт</span><span class="a">${esc(label(x.b))}</span><span class="km">${x.d<1000?Math.round(x.d/10)*10+" м":(x.d/1000).toFixed(1)+" км"}</span></div>`).join("")
-      :'<div class="empty">Похоже, ты сейчас не в Калининграде 🙂</div>';
+    box.innerHTML=(L.length&&L[0].d<30000)?`<div class="empty" style="padding:0 2px">Ближайшие${cat==="res"?` высотки от ${min} этажей`:cat?": "+CATS[cat][1]:""}:</div>`+L.map(x=>`<div class="mrow" data-id="${x.b.id}"><span class="lv">${lvs(x.b)}</span><span class="a">${esc(label(x.b))}${x.b.name&&x.b.name!==label(x.b)?` · <span style="color:var(--muted)">${esc(x.b.name)}</span>`:""}</span><span class="km">${x.d<1000?Math.round(x.d/10)*10+" м":(x.d/1000).toFixed(1)+" км"}</span></div>`).join("")
+      :'<div class="empty">Похоже, ты сейчас далеко от Калининградской области 🙂</div>';
   },err=>{ box.innerHTML=`<div class="empty">Не получилось определить местоположение: ${err.code===1?"доступ запрещён — разреши геолокацию для сайта в настройках браузера":"попробуй ещё раз"}</div>`; },{enableHighAccuracy:true,timeout:15000,maximumAge:60000});
 };
 $("nearList").addEventListener("click",e=>{ const r=e.target.closest(".mrow"); if(r){ const b=byId(r.dataset.id); if(b) openHouse(b); } });
@@ -979,10 +1013,10 @@ $("q").addEventListener("input",()=>{
   const q=norm($("q").value), box=$("qres");
   if(q.length<2){ box.style.display="none"; return; }
   const parts=q.split(" ");
-  const L=all.filter(b=>{ const t=norm(b.street+" "+b.num+" "+(b.name||"")); return parts.every(p=>t.includes(p)); })
+  const L=all.filter(b=>{ const t=norm(b.street+" "+b.num+" "+(b.name||"")+" "+(b.city||"")); return parts.every(p=>t.includes(p)); })
     .sort((a,b)=>a.street.localeCompare(b.street,"ru")||String(a.num).localeCompare(String(b.num),"ru",{numeric:true})).slice(0,30);
   box.style.display="grid";
-  box.innerHTML=L.length?`<div class="empty" style="padding:0 2px">Найдено: ${L.length===30?"30+":L.length}</div>`+L.map(b=>`<div class="mrow" data-id="${b.id}"><span class="lv">${b.lv} эт</span><span class="a">${esc(label(b))}</span></div>`).join(""):'<div class="empty">Ничего не нашлось. Попробуй только название улицы.</div>';
+  box.innerHTML=L.length?`<div class="empty" style="padding:0 2px">Найдено: ${L.length===30?"30+":L.length}</div>`+L.map(b=>`<div class="mrow" data-id="${b.id}"><span class="lv">${lvs(b)}</span><span class="a">${esc(label(b))}${b.name&&b.name!==label(b)?` · <span style="color:var(--muted)">${esc(b.name)}</span>`:""}${cityOf(b)!=="Калининград"?` <span style="color:var(--muted)">· ${esc(cityOf(b))}</span>`:""}</span></div>`).join(""):'<div class="empty">Ничего не нашлось. Попробуй только название улицы.</div>';
 });
 $("qres").addEventListener("click",e=>{ const r=e.target.closest(".mrow"); if(r){ const b=byId(r.dataset.id); if(b){ openHouse(b); } } });
 
@@ -1009,7 +1043,7 @@ async function makeStory(b){
   else { // нарисованная высотка
     x.fillStyle="#141628"; x.fillRect(60,top,W-120,ph);
     for(let i=0;i<70;i++){ x.fillStyle=`rgba(255,255,255,${Math.random()*.7})`; x.fillRect(60+Math.random()*(W-120), top+Math.random()*ph*.5, 3,3); }
-    const floors=b.lv, fh=Math.min(36,(ph-140)/floors), bw=330, bx=W/2-bw/2, by=top+ph-floors*fh-40;
+    const floors=b.lv||5, fh=Math.min(36,(ph-140)/floors), bw=330, bx=W/2-bw/2, by=top+ph-floors*fh-40;
     x.fillStyle="#2d2f4a"; x.fillRect(bx,by,bw,floors*fh+40); x.fillStyle="#4b4f72"; x.fillRect(bx-10,by-14,bw+20,18);
     for(let f=0;f<floors;f++) for(let k=0;k<5;k++){ x.fillStyle=((f*7+k*3)%5)?"#ffd27a":"#3a3f5c"; x.fillRect(bx+22+k*62,by+12+f*fh,34,fh*.55); }
   }
@@ -1022,7 +1056,7 @@ async function makeStory(b){
   x.textAlign="left"; x.fillStyle="#fff"; x.font="900 64px system-ui,sans-serif";
   let y=wrap(x,label(b),80,top+ph+110,W-160,74);
   x.font="700 40px system-ui,sans-serif"; x.fillStyle="#ffb03d";
-  const info=[`${b.lv} этажей`, districtOf(b)?districtOf(b)+" район":"", b.year?("построен в "+String(b.year).slice(0,4)):"" ].filter(Boolean).join(" · ");
+  const info=[isRes(b)?"":CATS[catOf(b)][1], b.lv?`${b.lv} этажей`:"", cityOf(b)!=="Калининград"?cityOf(b):(districtOf(b)?districtOf(b)+" район":""), b.year?("построен в "+String(b.year).slice(0,4)):"" ].filter(Boolean).join(" · ");
   y=wrap(x,info,80,y+70,W-160,50);
   if(photo){ x.font="600 32px system-ui,sans-serif"; x.fillStyle="#cfd5e1"; x.fillText("📷 вид с крыши: "+photo.author,80,y+60); y+=60; }
   // низ
@@ -1043,7 +1077,7 @@ $("stClose").onclick=()=>{ $("storyModal").style.display="none"; };
 $("stShare").onclick=async()=>{
   if(!storyBlob) return;
   const f=new File([storyBlob],"ruf-kld.png",{type:"image/png"});
-  try{ if(navigator.canShare&&navigator.canShare({files:[f]})){ await navigator.share({files:[f],title:"Руф·рандомайзер",text:"Калининград, "+label(currentB)}); return; } }catch(e){ if(e&&e.name==="AbortError") return; }
+  try{ if(navigator.canShare&&navigator.canShare({files:[f]})){ await navigator.share({files:[f],title:"Руф·рандомайзер",text:full(currentB)}); return; } }catch(e){ if(e&&e.name==="AbortError") return; }
   $("stDl").click();
 };
 
@@ -1075,12 +1109,12 @@ async function loadHod(){
     let b=h&&byId(h.house_id);
     if(!b){ // нет фото — берём дом дня по дате из списка
       if(!all.length||all[0].fallback) return;
-      const seed=Math.floor(Date.now()/864e5); const top=all.filter(x=>x.lv>=16); const arr=top.length?top:all;
+      const seed=Math.floor(Date.now()/864e5); const top=all.filter(x=>isRes(x)&&x.lv>=16); const arr=top.length?top:all;
       b=arr[(seed*2654435761>>>0)%arr.length]; h=null;
     }
     $("hodBox").className="hod"+(h&&h.photo?"":" noimg");
     $("hodBox").innerHTML=(h&&h.photo?`<img src="${photoUrl(h.photo)}" alt="Дом дня">`:"")+`<div><div class="hl">🌟 Дом дня</div><div class="ha">${esc(label(b))}</div>
-      <div class="hm">${b.lv} этажей${h&&h.author?` · фото: ${esc(h.author)}${h.likes?` · ❤️ ${h.likes}`:""}`:""} · нажми, чтобы открыть</div></div>`;
+      <div class="hm">${lvLong(b)}${h&&h.author?` · фото: ${esc(h.author)}${h.likes?` · ❤️ ${h.likes}`:""}`:""} · нажми, чтобы открыть</div></div>`;
     $("hodBox").style.display=""; $("hodBox").onclick=()=>openHouse(b);
   }catch(e){}
 }
@@ -1140,8 +1174,8 @@ async function loadPost(){
 }
 function renderStats(){
   if(!all.length||all[0].fallback){ $("stats").innerHTML=visitChip(); return; }
-  const top=all.reduce((a,b)=>b.lv>a.lv?b:a), avg=all.reduce((s,b)=>s+b.lv,0)/all.length, n20=all.filter(b=>b.lv>=20).length;
-  $("stats").innerHTML=visitChip()+`<span class="chip">🏢 высоток: <b>${all.length}</b></span><span class="chip">📏 самая высокая: <b>${top.lv} эт</b> · ${esc(label(top))}</span><span class="chip">⌀ в среднем <b>${avg.toFixed(1)}</b> эт</span><span class="chip">🌆 20+ этажей: <b>${n20}</b></span>`;
+  const RES=all.filter(isRes), top=RES.reduce((a,b)=>b.lv>a.lv?b:a), avg=RES.reduce((s,b)=>s+b.lv,0)/RES.length, n20=RES.filter(b=>b.lv>=20).length;
+  $("stats").innerHTML=visitChip()+`<span class="chip">🏢 высоток: <b>${RES.length}</b></span>${all.length>RES.length?`<span class="chip">🛍🏨🗼 ТЦ, отели, башни: <b>${all.length-RES.length}</b></span>`:""}<span class="chip">📏 самая высокая: <b>${top.lv} эт</b> · ${esc(label(top))}</span><span class="chip">⌀ в среднем <b>${avg.toFixed(1)}</b> эт</span><span class="chip">🌆 20+ этажей: <b>${n20}</b></span>`;
 }
 
 // ---------- Карта всех высоток ----------
@@ -1154,8 +1188,8 @@ function buildAllMap(){
   allMap=L.map("allmap",{scrollWheelZoom:false}).setView([54.715,20.51],12);
   L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png",{maxZoom:19,attribution:"© OpenStreetMap"}).addTo(allMap);
   for(const b of all){
-    const m=L.circleMarker([b.lat,b.lon],{radius:3+Math.min(6,(b.lv-9)/3),color:"#0d0f14",weight:1,fillColor:lvColor(b.lv),fillOpacity:.9}).addTo(allMap);
-    m.bindTooltip(`${label(b)} · ${b.lv} эт`);
+    const m=L.circleMarker([b.lat,b.lon],{radius:isRes(b)?3+Math.min(6,(b.lv-9)/3):5,color:"#0d0f14",weight:1,fillColor:isRes(b)?lvColor(b.lv):({mall:"#a78bfa",hotel:"#38bdf8",tower:"#f472b6"}[catOf(b)]),fillOpacity:.9}).addTo(allMap);
+    m.bindTooltip(`${esc(label(b))} · ${isRes(b)?b.lv+" эт":CATS[catOf(b)][1]}`);
     m.on("click",()=>openHouse(b));
   }
   $("mapcount").textContent=`· ${all.length} домов`;
@@ -1164,7 +1198,8 @@ $("loadAllMap").onclick=buildAllMap;
 
 $("spin").onclick=spin;
 $("minLv").onchange=applyFilter;
-$("district").onchange=applyFilter;
+$("district").onchange=()=>{ const v=$("district").value; if((v.startsWith("@")||v==="*")&&+$("minLv").value>5) $("minLv").value="5"; applyFilter(); };
+$("cat").onchange=applyFilter;
 
 function start(){
   window.__started=true;

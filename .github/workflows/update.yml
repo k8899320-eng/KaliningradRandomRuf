@@ -83,6 +83,12 @@ jobs:
           print("домов:", len(out))
           EOF
 
+      - name: Добавить ТЦ, отели, башни и города области
+        if: hashFiles('buildings.json') != ''
+        timeout-minutes: 20
+        continue-on-error: true
+        run: python3 tools/add_extra.py
+
       - name: Определить районы домов
         if: hashFiles('buildings.json') != ''
         timeout-minutes: 6
@@ -95,7 +101,7 @@ jobs:
           from shapely.ops import polygonize, unary_union
           d = json.load(open("buildings.json"))
           B = d["buildings"]
-          if all("d" in b for b in B):
+          if all("d" in b for b in B if b.get("city","Калининград")=="Калининград"):
               print("районы уже есть"); raise SystemExit(0)
           q = """[out:json][timeout:90];
           rel["boundary"="administrative"]["name"~"^(Ленинградский|Московский|Центральный) район$"](54.60,20.30,54.82,20.70);
@@ -117,6 +123,7 @@ jobs:
               if not poly.is_empty: polys.append((name.replace(" район", "").strip(), poly))
           n = 0
           for b in B:
+              if b.get("city", "Калининград") != "Калининград": b["d"] = ""; continue
               pt = Point(b["lon"], b["lat"])
               b["d"] = ""
               for name, poly in polys:
