@@ -1,0 +1,54 @@
+name: probe-images2
+on: workflow_dispatch
+permissions:
+  contents: write
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          pip install --quiet pillow
+          mkdir -p out
+          python3 - <<'PY'
+          import json, urllib.parse, urllib.request, io
+          from PIL import Image, ImageDraw
+          UA={"User-Agent":"ruf-kld-site/1.0 (github pages; contact k8899320-eng)"}
+          def api(params):
+              u="https://commons.wikimedia.org/w/api.php?"+urllib.parse.urlencode(params)
+              return json.load(urllib.request.urlopen(urllib.request.Request(u,headers=UA),timeout=60))
+          qs=["Kaliningrad view from roof","Kaliningrad rooftop view","view from House of Soviets Kaliningrad","Kaliningrad from height","Kaliningrad city view evening","Kaliningrad night city","Kaliningrad from above buildings","Kaliningrad Moskovsky prospekt view","Калининград с высоты","Калининград вид с крыши","Kaliningrad sunset","Kaliningrad residential district view"]
+          seen={}
+          for q in qs:
+              try:
+                  d=api({"action":"query","format":"json","generator":"search","gsrsearch":q+" filetype:bitmap","gsrnamespace":6,"gsrlimit":25,
+                         "prop":"imageinfo","iiprop":"url|size|extmetadata","iiurlwidth":640})
+              except Exception as e: print("fail",q,e); continue
+              for p in (d.get("query",{}).get("pages",{}) or {}).values():
+                  ii=p.get("imageinfo",[{}])[0]
+                  if ii.get("width",0)<1800 or ii.get("width",0)<ii.get("height",1)*1.2: continue
+                  m=ii.get("extmetadata",{})
+                  lic=m.get("LicenseShortName",{}).get("value","")
+                  if not any(k in lic for k in ("CC BY","CC0","Public domain","FAL","PD")): continue
+                  seen[p["title"]]={"title":p["title"],"thumb":ii.get("thumburl"),"w":ii["width"],"h":ii["height"],"lic":lic,"artist":m.get("Artist",{}).get("value","")[:200],"page":ii.get("descriptionurl")}
+          old={"File:Old cathedral of Kaliningrad in Russia.jpg","File:Kaliningrad 05-2017 img10 aerial view.jpg","File:Kaliningrad Panorama (5664122123).jpg"}
+          L=[x for k,x in seen.items() if k not in old][:60]
+          json.dump(L,open("out/list.json","w"),ensure_ascii=False,indent=1)
+          tiles=[]
+          for i,x in enumerate(L):
+              try:
+                  im=Image.open(io.BytesIO(urllib.request.urlopen(urllib.request.Request(x["thumb"],headers=UA),timeout=60).read())).convert("RGB")
+                  im.thumbnail((400,260)); t=Image.new("RGB",(400,290),"black"); t.paste(im,(0,0))
+                  ImageDraw.Draw(t).text((5,265),f"#{i} {x['lic'][:20]}",fill="yellow"); tiles.append(t)
+              except Exception as e: tiles.append(Image.new("RGB",(400,290),"gray"))
+          for s in range(0,len(tiles),12):
+              sheet=Image.new("RGB",(1600,870),"black")
+              for k,t in enumerate(tiles[s:s+12]): sheet.paste(t,((k%4)*400,(k//4)*290))
+              sheet.save(f"out/sheet{s//12}.jpg",quality=80)
+          print("found",len(L))
+          PY
+      - run: |
+          git config user.name bot; git config user.email bot@users.noreply.github.com
+          git checkout -b probe-images
+          git add -f out && git commit -qm probe && git push -f origin probe-images
