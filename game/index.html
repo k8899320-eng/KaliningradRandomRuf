@@ -210,6 +210,7 @@ const sJump=()=>beep(300,700,.12,"square",.06), sDouble=()=>beep(500,1100,.12,"s
 const G=2300, JUMP=-760, DJUMP=-640, SPRING=-1150, PX=110;
 const STYLES=["panel","brick","glass","old","neon"];
 const FINISH_M=10000;
+const AUTO=/[?&]auto/.test(location.search); // автопилот — только для записи промо-роликов
 let usedGrab=false, hang=null, finalRoof=null, guard=null, hatch=null, fin=null, finT=0, hasSpray=false;
 let chase=75, cop=null, state="menu", t=0, speed, dist, starCount, roofs, items, parts, birds, fx=[], popups=[], player, camX, shake, lastTs=0, power={type:null,until:0}, nextMilestone;
 
@@ -374,6 +375,7 @@ function update(dt){
   if(state!=="play") return;
   const p=player;
   if(hang){
+    if(AUTO && Math.random()<.5) jumpPress();
     hang.timer-=dt; if(hang.prog<1) hang.prog=Math.max(0,hang.prog-.35*dt);
     p.y=surfaceY(hang.r)+32-hang.prog*22; p.run+=dt*40;
     chase=Math.max(0,chase-0.8*dt);
@@ -382,6 +384,8 @@ function update(dt){
     hudUpdate(); return;
   }
   if(fin){ finale(dt); hudUpdate(); return; }
+  if(AUTO && p.ground && p.on && !p.on.final && !p.dead){ const nx=roofs[roofs.indexOf(p.on)+1], edge=p.on.x+p.on.w-(camX+p.x);
+    if(edge<speed*.07 || (nx && edge<speed*.11 && surfaceY(nx)<surfaceY(p.on)-40)) jumpPress(); }
   if(finalRoof && guard && p.ground && camX+p.x>=guard.x-48){ fin="face"; finT=0; if(!hasSpray){hasSpray=true;} popup("Охранник! Тапай — брызни! 🧴","#ff8a5d"); hudUpdate(); return; }
   if(!p.dead){ speed=Math.min(440,speed+5*dt); }
   const dx=p.dead?speed*.3*dt:speed*dt;
