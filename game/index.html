@@ -499,7 +499,7 @@ function resize(){
   const w=innerWidth,h=innerHeight;
   renderer.setPixelRatio(Math.min(devicePixelRatio||1,GFX==="high"?1.75:1.15));
   renderer.setSize(w,h,false);
-  camera.aspect=w/h; camera.fov=w<h?62:48; camera.updateProjectionMatrix();
+  camera.aspect=w/h; camera.fov=w<h?64:56; camera.updateProjectionMatrix();
 }
 addEventListener("resize",resize);
 
@@ -806,7 +806,7 @@ function draw(dt){
   }
   // полицейский
   copM.visible=!menu&&!!cop&&!(finalRoof&&fin);
-  if(copM.visible){ const cx=X3(camX+copX()); copM.position.set(cx,Y3(cop.y),0); if(cop.ground) pose(copM,"run",cop.run/24); else pose(copM,"jump",0,cop.vy);
+  if(copM.visible){ const cx=X3(camX+copX()); copM.position.set(cx,Y3(cop.y),2.6); if(cop.ground) pose(copM,"run",cop.run/24); else pose(copM,"jump",0,cop.vy);
     copM.userData.light.material.color.set(Math.sin(t*16)>0?0xff3b3b:0x3b7bff); }
   // финал
   guardM.visible=!!(guard&&finalRoof);
@@ -826,16 +826,17 @@ function draw(dt){
   } else {
     const followY=player.dead?camY:Y3(Math.min(player.y,340));
     camY+=(followY-camY)*Math.min(1,dt*3);
-    const ahead=portrait?14:16;
+    const ahead=portrait?16:18;
     tv.set(px+ahead,camY+1.5,0);
     camLook.lerp(tv,camSnap?1:Math.min(1,dt*6));
-    const off=portrait?[-21,10.5,10]:[-14,8.5,25];
+    const off=portrait?[-21,10,3.5]:[-18,8,4];
     _tgt.set(px+off[0],camY+off[1],off[2]);
     camPos.lerp(_tgt,camSnap?1:Math.min(1,dt*4)); if(camSnap){ camY=followY; camSnap=false; }
   }
   camera.position.copy(camPos);
   if(shake>0) camera.position.add(_sh.set((Math.random()-.5)*shake*3,(Math.random()-.5)*shake*3,0));
   camera.lookAt(camLook);
+  if(copM.visible && camera.position.distanceTo(copM.position)<7) copM.visible=false;
   sky.position.copy(camera.position); skyStars.position.copy(camera.position);
   sunDisc.position.copy(camera.position).add(_sun); sunDisc.lookAt(camera.position);
   sun.position.set(px-60,py+110,90); sun.target.position.set(px+8,py,0);
