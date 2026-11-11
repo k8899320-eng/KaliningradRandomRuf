@@ -1,0 +1,15 @@
+name: vendor-build
+on: workflow_dispatch
+permissions: { contents: write }
+jobs:
+  b:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          mkdir v && cd v && npm init -y >/dev/null && npm i three@0.170.0 esbuild@0.24.0 leaflet@1.9.4 >/dev/null
+          echo 'export {ACESFilmicToneMapping,BackSide,BoxGeometry,BufferGeometry,CanvasTexture,CircleGeometry,Color,ConeGeometry,CylinderGeometry,DirectionalLight,DoubleSide,ExtrudeGeometry,Float32BufferAttribute,Fog,Group,HemisphereLight,InstancedMesh,Matrix4,Mesh,MeshBasicMaterial,MeshStandardMaterial,PCFSoftShadowMap,PerspectiveCamera,PlaneGeometry,Points,PointsMaterial,Quaternion,RepeatWrapping,SRGBColorSpace,Scene,ShaderMaterial,Shape,SphereGeometry,TorusGeometry,Vector3,WebGLRenderer} from "three";' > entry.js
+          npx esbuild entry.js --bundle --format=esm --minify --target=es2020 --legal-comments=none --outfile=three.game.min.js
+          ls -la three.game.min.js; gzip -9c three.game.min.js | wc -c
+          mkdir -p ../out/leaflet && cp three.game.min.js ../out/ && cp node_modules/leaflet/dist/leaflet.js node_modules/leaflet/dist/leaflet.css ../out/leaflet/ && cp -r node_modules/leaflet/dist/images ../out/leaflet/ && cp node_modules/leaflet/LICENSE ../out/leaflet/LICENSE
+          cd .. && git config user.name bot && git config user.email bot@x && git checkout --orphan vendor-out && git rm -rqf . && git add out && git commit -qm out && git push -f origin vendor-out
