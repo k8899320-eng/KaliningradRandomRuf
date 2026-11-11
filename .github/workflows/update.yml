@@ -138,6 +138,7 @@ jobs:
           cp index.html _site/
           if [ -d assets ]; then cp -r assets _site/assets; fi
           if [ -d admin ]; then cp -r admin _site/admin; fi
+          if [ -d vendor ]; then cp -r vendor _site/vendor; fi
           if [ -d game ]; then cp -r game _site/game && (cd game && zip -qr ../_site/roofer-game.zip .); fi
           if [ -f buildings.json ]; then cp buildings.json _site/; else echo "::warning::нет buildings.json — сайт будет грузить дома напрямую"; fi
 

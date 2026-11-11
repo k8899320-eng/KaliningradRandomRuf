@@ -247,8 +247,8 @@ async function tabReports(){
 }
 // ---------- Дома ----------
 let HMAP=null, HMARK=null;
-function leaflet(){ return window.L?Promise.resolve():new Promise((ok,bad)=>{ const c=document.createElement("link"); c.rel="stylesheet"; c.href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"; document.head.appendChild(c);
-  const s=document.createElement("script"); s.src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"; s.onload=ok; s.onerror=bad; document.head.appendChild(s); }); }
+function leaflet(){ return window.L?Promise.resolve():new Promise((ok,bad)=>{ const c=document.createElement("link"); c.rel="stylesheet"; c.href="../vendor/leaflet/leaflet.css"; document.head.appendChild(c);
+  const s=document.createElement("script"); s.src="../vendor/leaflet/leaflet.js"; s.onload=ok; s.onerror=bad; document.head.appendChild(s); }); }
 async function tabHouses(edit){
   let L=[]; try{ L=await rpc("admin_list_houses",{p_token:TOKEN}); }catch(e){ $("tab").innerHTML=`<div class="empty">${esc(e.message)}</div>`; return; }
   const h=edit||{};

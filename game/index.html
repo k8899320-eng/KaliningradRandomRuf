@@ -8,6 +8,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="description" content="Руфер Калининград 3D — беги по крышам от полицейского, прыгай через провалы.">
 <title>Руфер Калининград 3D</title>
+<link rel="modulepreload" href="vendor/three.game.min.js">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icon-192.png">
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;1,500&family=Manrope:wght@500;700;800&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
@@ -177,7 +178,7 @@
 })();
 </script>
 <script type="module">
-import * as THREE from "./vendor/three.module.min.js";
+import * as THREE from "./vendor/three.game.min.js";
 "use strict";
 // ---------- Хранилище ----------
 const store={get(k,d){try{const v=localStorage.getItem(k);return v===null?d:JSON.parse(v)}catch(e){return d}},

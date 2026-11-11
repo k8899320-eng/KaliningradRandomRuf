@@ -626,11 +626,11 @@ async function loadFresh(){
 let leafletReady=false, pendingMap=null;
 (function(){
   const css=document.createElement("link"); css.rel="stylesheet";
-  css.href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"; document.head.appendChild(css);
-  const js=document.createElement("script"); js.async=true;
-  js.src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js";
-  js.onload=()=>{ leafletReady=true; if(pendingMap) drawMap(pendingMap); };
-  document.head.appendChild(js);
+  css.href="vendor/leaflet/leaflet.css"; document.head.appendChild(css);
+  const add=(src,fallback)=>{ const js=document.createElement("script"); js.async=true; js.src=src;
+    js.onload=()=>{ leafletReady=true; if(pendingMap) drawMap(pendingMap); };
+    if(fallback) js.onerror=()=>add(fallback); document.head.appendChild(js); };
+  add("vendor/leaflet/leaflet.js","https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"); // своя копия, unpkg — запасной
 })();
 
 function districtOf(b){
@@ -1179,11 +1179,16 @@ async function initBg(){
     {f:"hero3",who:"Dima Bushkov",lic:"CC BY 2.0",url:"https://commons.wikimedia.org/wiki/File:Kaliningrad_Panorama_(5664122123).jpg"},
     {f:"bg-roof",who:"A.Savin",lic:"FAL",url:"https://commons.wikimedia.org/wiki/File:BaltiyskPillau_05-2017_img07_aerial_photo.jpg"}];
   const TOP=3, DEEP=3; // первые 3 — слайд-шоу наверху, последний — фон всей остальной страницы
-  box.innerHTML=slides.map((x,i)=>`<div class="bgp${i?"":" on"}" style="background-image:url('assets/${x.f}${small?"-m":""}.jpg')"></div>`).join("");
+  let webp=false; try{ webp=document.createElement("canvas").toDataURL("image/webp").startsWith("data:image/webp"); }catch(e){}
+  const src=x=>`assets/${x.f}${small?"-m":""}.${webp?"webp":"jpg"}`;
+  // сразу грузим только первое фото, остальные — когда страница уже открылась
+  box.innerHTML=slides.map((x,i)=>`<div class="bgp${i?"":" on"}"${i?"":` style="background-image:url('${src(x)}')"`}></div>`).join("");
+  const lazy=()=>box.querySelectorAll(".bgp").forEach((el,i)=>{ if(i) el.style.backgroundImage=`url('${src(slides[i])}')`; });
+  if(document.readyState==="complete") setTimeout(lazy,1500); else addEventListener("load",()=>setTimeout(lazy,1500),{once:true});
   const cred=i=>{ const x=slides[i]; $("bgcred").style.display=""; $("bgcred").innerHTML=`Фото: ${esc(x.who)} · <a href="${x.url}" target="_blank" rel="noopener">${x.lic}</a>`; };
   cred(0);
   let k=0; const els=box.querySelectorAll(".bgp");
-  const show=i=>{ if(i===k) return; els[k].classList.remove("on"); k=i; els[k].classList.add("on"); cred(k); };
+  const show=i=>{ if(i===k) return; if(!els[i].style.backgroundImage) els[i].style.backgroundImage=`url('${src(slides[i])}')`; els[k].classList.remove("on"); k=i; els[k].classList.add("on"); cred(k); };
   // ниже первого экрана — всегда один вид с крыши (черепица + собор), слайд-шоу только наверху
   let topK=0;
   const below=()=>window.scrollY>innerHeight*0.6;
