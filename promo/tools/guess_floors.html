@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="ru"><head><meta charset="UTF-8"><meta name="viewport" content="width=432,height=768">
+<style>
+  html,body{margin:0;width:432px;height:768px;overflow:hidden;background:#0b0e1a;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;color:#fff}
+  canvas{position:absolute;inset:0}
+  .t{position:absolute;left:0;right:0;text-align:center;padding:0 18px;opacity:0;transform:translateY(16px);transition:opacity .4s,transform .45s cubic-bezier(.2,1.4,.4,1)}
+  .t.on{opacity:1;transform:none}
+  .big{font-weight:900;font-size:38px;line-height:1.06}
+  .big em{font-style:normal;color:#ffb03d}
+  .mid{font-weight:800;font-size:24px;line-height:1.2}
+  .sm{font-size:15px;color:#cfd5e1;font-weight:600}
+  .tag{display:inline-block;background:#ff6a3d;color:#fff;border-radius:999px;padding:5px 14px;font-weight:900;font-size:18px;margin-bottom:10px}
+  .opt{display:flex;align-items:center;gap:12px;margin:10px auto;width:300px;background:rgba(255,255,255,.08);border:2px solid rgba(255,255,255,.25);border-radius:16px;padding:10px 14px;font-weight:800;font-size:24px;opacity:0;transform:scale(.8);transition:all .35s cubic-bezier(.2,1.4,.4,1)}
+  .opt b{display:inline-grid;place-items:center;width:38px;height:38px;border-radius:50%;background:#ffb03d;color:#1a0d06;font-size:22px}
+  .opt.on{opacity:1;transform:none}
+  .opt.win{background:rgba(74,222,128,.22);border-color:#4ade80}
+  .opt.lose{opacity:.3}
+  .pill{display:inline-block;background:#ffb03d;color:#1a0d06;border-radius:14px;padding:10px 14px;font-weight:900;font-size:20px;line-height:1.2}
+  #cd{position:absolute;left:0;right:0;top:470px;text-align:center;font-weight:900;font-size:110px;color:#ffb03d;opacity:0;transition:opacity .2s}
+  .src{position:absolute;bottom:10px;left:0;right:0;text-align:center;font-size:11px;color:#6b7387}
+</style></head><body>
+<canvas id="c" width="1080" height="1920" style="width:432px;height:768px"></canvas>
+
+<div class="t" id="hook" style="top:70px"><div class="tag">УГАДАЙ 🤔</div><div class="big">Каких высоток<br>в <em>Калининграде</em><br>больше всего?</div>
+  <div style="margin-top:22px">
+    <div class="opt" id="oA"><b>A</b>16 этажей</div>
+    <div class="opt" id="oB"><b>B</b>12 этажей</div>
+    <div class="opt" id="oC"><b>C</b>9 этажей</div>
+  </div></div>
+<div id="cd"></div>
+
+<div class="t" id="ans" style="top:56px"><div class="tag" style="background:#4ade80;color:#06210f">ОТВЕТ: C ✅</div><div class="big" style="font-size:30px"><em>9 этажей</em> — 357 домов</div><div class="sm" style="margin-top:8px;font-size:17px;color:#fff">Это больше половины из 676 высоток!</div></div>
+
+<div class="t" id="fact" style="top:56px"><div class="tag">А ЕЩЁ</div><div class="mid">13 этажей — всего <span style="color:#ffb03d">5 домов</span> 🤔</div><div class="sm" style="margin-top:8px;font-size:17px">а 19 и 25 этажей — по одному на весь город</div></div>
+
+<div class="t" id="ask" style="top:110px"><div class="big" style="font-size:36px">А сколько этажей<br>в <em>твоём</em> доме?</div><div class="mid" style="margin-top:16px">Пиши в комменты 👇</div></div>
+
+<div class="t" id="cta" style="top:110px"><div style="font-size:60px">🏢</div><div class="big" style="font-size:34px">РУФ·РАНДОМАЙЗЕР<br><span style="color:#ff6a3d">КАЛИНИНГРАД</span></div>
+  <div class="sm" style="margin:12px 0 10px;font-size:17px;color:#fff">676 высоток на карте, виды с крыш<br>от пользователей и мини-игра 🎰</div>
+  <div class="pill">k8899320-eng.github.io<br>/KaliningradRandomRuf</div><div class="mid" style="margin-top:12px">👉 ссылка в профиле</div>
+  <div class="sm" style="margin-top:12px;font-size:12px;color:#aab2c5">Береги себя: крыши опасны, а без разрешения — нарушение закона</div></div>
+<div class="src" id="src">Данные: OpenStreetMap · дома от 9 этажей</div>
+
+<script>
+const cv=document.getElementById("c"), ctx=cv.getContext("2d"), S=2.5, W=432, H=768;
+const T=s=>document.getElementById(s);
+const stars=[...Array(80)].map(()=>({x:Math.random()*W,y:Math.random()*H*.55,r:Math.random()*1.4+.3,p:Math.random()*6}));
+const far=[];let x=0;while(x<W+60){const w=24+Math.random()*40;far.push({x,w,h:60+Math.random()*120});x+=w+2}
+const D=[[9,357],[10,168],[12,52],[14,27],[16,27],[17,16],[11,16],[15,6],[13,5],[19,1],[25,1]];
+const ground=H-70;
+let bars=null, dim=0, hl13=0, cdv="";
+function show(id){T(id).classList.add("on")} function hide(id){T(id).classList.remove("on")}
+const tl=[
+  [0.0,()=>show("hook")],
+  [0.5,()=>show("oA")],[0.85,()=>show("oB")],[1.2,()=>show("oC")],
+  [3.2,()=>cd("3")],[4.0,()=>cd("2")],[4.8,()=>cd("1")],
+  [5.6,()=>{cd("");T("oC").classList.add("win");T("oA").classList.add("lose");T("oB").classList.add("lose")}],
+  [6.8,()=>{hide("hook");show("ans");bars=now()}],
+  [12.4,()=>{hide("ans");show("fact");hl13=1}],
+  [16.0,()=>{hide("fact");show("ask");bars=null;hl13=0}],
+  [19.0,()=>{hide("ask");show("cta");dim=1;T("src").style.opacity=0}],
+];
+function cd(v){const e=T("cd");e.textContent=v;e.style.opacity=v?1:0}
+const t0=performance.now(); const now=()=>(performance.now()-t0)/1000;
+let k=0; const ease=t=>1-Math.pow(1-t,3);
+function rr(x,y,w,h,r){ctx.beginPath();ctx.roundRect(x,y,w,h,r);ctx.fill()}
+function draw(){
+  const t=now();
+  while(k<tl.length&&t>=tl[k][0]){tl[k][1]();k++}
+  ctx.setTransform(S,0,0,S,0,0);
+  const g=ctx.createLinearGradient(0,0,0,H); g.addColorStop(0,"#0b0e1a"); g.addColorStop(.6,"#1b1838"); g.addColorStop(1,"#3a1f2e");
+  ctx.fillStyle=g; ctx.fillRect(0,0,W,H);
+  for(const s of stars){ctx.globalAlpha=.4+.6*Math.abs(Math.sin(t*1.5+s.p));ctx.fillStyle="#fff";ctx.fillRect(s.x,s.y,s.r,s.r)} ctx.globalAlpha=1;
+  const off=(t*8)%60;
+  ctx.fillStyle="#1d1e38"; for(const b of far) ctx.fillRect(b.x-off,ground-b.h,b.w,b.h+70);
+  // девятиэтажки на заднем плане (крюк)
+  if(!bars){ for(let i=0;i<5;i++){ const bx=20+i*84, h=9*17, top=ground-h; ctx.fillStyle="#2d2f4a"; ctx.fillRect(bx,top,64,h);
+      for(let f=0;f<9;f++) for(let c=0;c<3;c++){ ctx.fillStyle=((f*5+c*3+i)%4)?"#ffd27a":"#3a3f5c"; ctx.fillRect(bx+8+c*19,ground-(f+1)*17+5,10,8);} } }
+  ctx.fillStyle="#141624"; ctx.fillRect(0,ground,W,H-ground);
+  // горизонтальные столбики
+  if(bars!=null){
+    const y0=215, rowH=40, maxW=250;
+    ctx.fillStyle="rgba(10,12,24,.6)"; rr(14,y0-14,W-28,D.length*rowH+20,16);
+    D.forEach(([lv,n],i)=>{
+      const p=ease(Math.max(0,Math.min(1,(t-bars-i*.12)/1.2)));
+      const y=y0+i*rowH, w=Math.max(4,maxW*n/357*p);
+      const hot = (lv===9&&!hl13)||(lv===13&&hl13);
+      ctx.globalAlpha = hl13&&!hot ? .35 : 1;
+      ctx.fillStyle="#cfd5e1"; ctx.font="800 16px system-ui"; ctx.textAlign="right"; ctx.fillText(lv+" эт.",78,y+19);
+      ctx.fillStyle= hot ? (lv===9?"#4ade80":"#ffb03d") : (lv===9?"#4ade80":"#7c86b8");
+      rr(88,y+4,w,22,6);
+      ctx.fillStyle="#fff"; ctx.textAlign="left"; ctx.font="900 16px system-ui"; ctx.fillText(Math.round(n*p),88+w+8,y+21);
+      ctx.globalAlpha=1;
+    });
+  }
+  if(dim){ ctx.fillStyle="rgba(8,10,16,.82)"; ctx.fillRect(0,0,W,H); }
+  requestAnimationFrame(draw);
+}
+requestAnimationFrame(draw);
+window.__dur=23.5;
+</script></body></html>
