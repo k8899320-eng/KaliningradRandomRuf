@@ -212,7 +212,7 @@ async function tabComments(){
     $("clist2").className=""; $("clist2").innerHTML=L.length?`<div class="muted" style="margin-bottom:8px">Показано: ${L.length}${L.length>=200?" (последние 200)":""}</div>`+L.map(c=>`<div class="card" style="display:flex;gap:10px;align-items:flex-start">
       ${c.photo?`<img src="${photoUrl(c.photo)}" data-full="${photoUrl(c.photo)}" loading="lazy" style="width:84px;height:84px;object-fit:cover;border-radius:10px;cursor:zoom-in;flex:none">`:""}
       <div style="flex:1;min-width:0"><div class="meta" style="margin-top:0"><b style="color:var(--accent2)">${esc(c.author)}</b> · ${dt(c.created_at)} · <a href="../#h-${esc(c.house_id.replace("/","-"))}" target="_blank" style="color:var(--muted)">${esc(addr(c.house_id))}</a>
-        ${c.photo?` · <span class="tag">${{approved:"✅ фото",pending:"⏳ на модерации",rejected:"❌ отклонено"}[c.photo_status]||c.photo_status}</span>`:""}${c.likes?` · ❤️ ${c.likes}`:""}${c.reports?` · <span class="tag ban">🚩 ${c.reports}</span>`:""}${c.reply_to?" · ↩ ответ":""}</div>
+        ${c.photo?` · <span class="tag">${{approved:"✅ фото",pending:"⏳ на модерации",rejected:"❌ отклонено"}[c.photo_status]||esc(c.photo_status)}</span>`:""}${c.likes?` · ❤️ ${c.likes}`:""}${c.reports?` · <span class="tag ban">🚩 ${c.reports}</span>`:""}${c.reply_to?" · ↩ ответ":""}</div>
         <div style="word-break:break-word">${c.body&&c.body!=="📷"?esc(c.body):'<span class="muted">(только фото)</span>'}</div>${extra(c)}</div>
       <button class="bad" data-del="${c.id}" title="Удалить">🗑</button></div>`).join(""):'<div class="empty">Ничего не найдено</div>';
   };
