@@ -867,10 +867,10 @@ $("cform").addEventListener("submit",async ev=>{
     const photos=[];
     for(let i=0;i<pickedPhotos.length;i++){
       $("cmsg").textContent=pickedPhotos.length>1?`Загружаю фото ${i+1} из ${pickedPhotos.length}…`:"Загружаю фото…";
-      const path=house.toLowerCase().replace(/[^a-z0-9]/g,"-")+"/"+Date.now().toString(36)+"-"+Math.random().toString(36).slice(2,8)+".jpg";
-      const up=await fetchT(`${SUPA}/storage/v1/object/${PHOTO_BUCKET}/${path}`,30000,{method:"POST",headers:{"apikey":SUPABASE_KEY,"Content-Type":"image/jpeg","x-upsert":"false"},body:pickedPhotos[i]});
-      if(!up.ok) throw new Error(pickedPhotos.length>1?`фото ${i+1} не загрузилось`:"фото не загрузилось");
-      photos.push(path);
+      const up=await fetchT(`${SUPA}/functions/v1/upload-photo`,40000,{method:"POST",headers:{"apikey":SUPABASE_KEY,"Content-Type":"image/jpeg","x-token":TOKEN,"x-house":encodeURIComponent(house)},body:pickedPhotos[i]});
+      let res={}; try{ res=await up.json(); }catch(e){}
+      if(!up.ok||!res.path) throw new Error((pickedPhotos.length>1?`фото ${i+1}: `:"")+(res.error||"фото не загрузилось"));
+      photos.push(res.path);
     }
     const r=await rpc("post_comment2",{p_token:TOKEN,p_house:house,p_body:body,p_photos:photos.length?photos:null,p_reply_to:replyTo?replyTo.id:null});
     $("ctext").value=""; clearPhoto(); setReply(null);
