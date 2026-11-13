@@ -185,7 +185,7 @@ function tabUsers(){
       <td>${u.banned_until?`<span class="tag ban">бан ${u.banned_until==="infinity"||new Date(u.banned_until).getFullYear()>3000?"навсегда":"до "+dt(u.banned_until)}</span><div class="muted" style="font-size:12px">${esc(u.ban_reason||"")}</div>`:"✅"}</td>
       <td><div class="row">${u.is_admin?"":u.banned_until?`<button class="ok" data-unban="${u.id}">Разбанить</button>`:`<button class="bad" data-ban="${u.id}">⛔ Бан</button>`}
         <a href="../#u-${encodeURIComponent(u.nick)}" target="_blank" title="Профиль на сайте"><button>👁</button></a>
-        <button data-pw="${u.id}" title="Сбросить пароль">🔑</button>${u.is_admin?"":`<button data-role="${u.id}" data-r="${u.role==="mod"?"":"mod"}" title="${u.role==="mod"?"Снять модерку":"Сделать модератором"}">🛡${u.role==="mod"?"✕":""}</button>`}${u.is_admin?"":`<button data-purge="${u.id}" title="Удалить все его комментарии">🧹</button>`}</div></td></tr>`).join("")}</table></div>`
+        <button data-pw="${u.id}" title="Сбросить пароль">🔑</button>${u.is_admin?"":`<button data-role="${u.id}" data-r="${u.role==="mod"?"":"mod"}" title="${u.role==="mod"?"Снять модерку":"Сделать модератором"}">🛡${u.role==="mod"?"✕":""}</button>`}${u.is_admin?"":`<button data-purge="${u.id}" title="Удалить все его комментарии">🧹</button><button class="bad" data-delacc="${u.id}" title="Удалить аккаунт навсегда">❌ Удалить</button>`}</div></td></tr>`).join("")}</table></div>`
     :`<div class="empty">Никого не нашлось</div>`);
   $("uq").oninput=e=>{ UQ=e.target.value; const pos=e.target.selectionStart; tabUsers(); $("uq").focus(); $("uq").setSelectionRange(pos,pos); };
   $("tab").onclick=async e=>{
@@ -201,6 +201,24 @@ function tabUsers(){
       try{ const r=await rpc("admin_reset_password",{p_token:TOKEN,p_user:u.id}); alertMsg(`Новый пароль для ${u.nick}: ${r.password}\n\nПередай ему лично и попроси сменить потом (пока смены нет — пусть просто помнит этот).`); }catch(err){ alertMsg(err.message); } }
     if(pg){ const u=DATA.users.find(x=>x.id==pg.dataset.purge); if(!confirm(`Удалить ВСЕ комментарии и фото пользователя ${u.nick}? Это не отменить.`)) return;
       try{ const r=await rpc("admin_purge_user",{p_token:TOKEN,p_user:u.id}); alertMsg(`Удалено: ${r.deleted}`); load(); }catch(err){ alertMsg(err.message); } }
+    const da=e.target.closest("[data-delacc]");
+    if(da){ const u=DATA.users.find(x=>x.id==da.dataset.delacc); deleteAccountDialog(u); }
+  };
+}
+function deleteAccountDialog(u){
+  $("mbox").innerHTML=`<h3 style="margin:0 0 8px">❌ Удалить аккаунт ${esc(u.nick)}?</h3>
+    <div class="muted" style="font-size:14px;margin-bottom:10px">Навсегда удалятся: аккаунт, все его комментарии и фото, анкеты, отклики, лайки, отметки «был», уведомления. Ник освободится. <b>Отменить нельзя.</b></div>
+    <label style="display:flex;gap:8px;align-items:center;margin-bottom:10px"><input type="checkbox" id="dab" checked> Ещё и забанить IP навсегда (${esc(u.last_ip||"нет IP")}), чтобы не завёл новый</label>
+    <input id="dac" placeholder="Для подтверждения впиши ник: ${esc(u.nick)}" autocomplete="off" style="width:100%;box-sizing:border-box">
+    <div class="row" style="margin-top:10px"><button class="bad" id="dago">Удалить навсегда</button><button id="dano">Отмена</button></div><div class="msg" id="damsg"></div>`;
+  $("modal").style.display="flex";
+  $("dano").onclick=()=>{ $("modal").style.display="none"; };
+  $("dago").onclick=async()=>{
+    if($("dac").value.trim()!==u.nick){ $("damsg").textContent="Ник не совпадает"; return; }
+    $("dago").disabled=true;
+    try{ const r=await rpc("admin_delete_user",{p_token:TOKEN,p_user:u.id,p_ban_ip:$("dab").checked});
+      alertMsg(`Аккаунт ${r.nick} удалён.\nКомментариев удалено: ${r.comments}${r.ip_banned?"\nIP забанен навсегда":""}`); load(); }
+    catch(err){ $("damsg").textContent=err.message; $("dago").disabled=false; }
   };
 }
 // ---------- Комментарии ----------
