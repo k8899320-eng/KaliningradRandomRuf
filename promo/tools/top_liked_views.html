@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="ru"><head><meta charset="UTF-8"><meta name="viewport" content="width=432,height=768">
+<!-- Ролик «Топ-3 вида по лайкам»: самые залайканные одобренные фото сайта (все — zhev_urbex, ЖК «Корона», ул. 1812 года, 126). Данные на 15.11.2026 -->
+<style>
+  html,body{margin:0;width:432px;height:768px;overflow:hidden;background:#0b0e1a;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;color:#fff}
+  canvas{position:absolute;inset:0}
+  .t{position:absolute;left:0;right:0;text-align:center;padding:0 18px;opacity:0;transform:translateY(16px);transition:opacity .4s,transform .45s cubic-bezier(.2,1.4,.4,1)}
+  .t.on{opacity:1;transform:none}
+  .big{font-weight:900;font-size:38px;line-height:1.06;text-shadow:0 2px 12px rgba(0,0,0,.6)}
+  .big em{font-style:normal;color:#ffb03d}
+  .mid{font-weight:800;font-size:24px;line-height:1.2;text-shadow:0 2px 10px rgba(0,0,0,.6)}
+  .mid em{font-style:normal;color:#ffb03d}
+  .sm{font-size:15px;color:#e3e7ef;font-weight:600;text-shadow:0 1px 6px rgba(0,0,0,.7)}
+  .tag{display:inline-block;background:#ff6a3d;color:#fff;border-radius:999px;padding:5px 14px;font-weight:900;font-size:18px;margin-bottom:10px}
+  .pill{display:inline-block;background:#ffb03d;color:#1a0d06;border-radius:14px;padding:10px 14px;font-weight:900;font-size:20px;line-height:1.2}
+  .rank{display:inline-flex;align-items:center;gap:10px}
+  .num{font-weight:900;font-size:64px;color:#ffb03d;line-height:1;text-shadow:0 3px 14px rgba(0,0,0,.6)}
+  .card{display:inline-block;background:rgba(10,12,24,.78);border-radius:16px;padding:10px 16px;text-align:left}
+  .card b{font-size:19px} .card .a{font-size:15px;color:#cfd5e1;font-weight:700;margin-top:3px}
+  .heart{color:#ff4d6d}
+</style></head><body>
+<canvas id="c" width="1080" height="1920" style="width:432px;height:768px"></canvas>
+
+<div class="t" id="hook" style="top:70px"><div class="tag">❤️ ПО ЛАЙКАМ</div><div class="big">ТОП-3 вида<br>с высоток<br><em>Калининграда</em></div><div class="sm" style="margin-top:10px;font-size:17px">выбрали пользователи сайта</div></div>
+
+<div class="t" id="r3" style="top:46px"><div class="rank"><span class="num">#3</span><span class="mid">4 <span class="heart">❤</span></span></div></div>
+<div class="t" id="r2" style="top:46px"><div class="rank"><span class="num">#2</span><span class="mid">5 <span class="heart">❤</span></span></div></div>
+<div class="t" id="r1" style="top:46px"><div class="rank"><span class="num">#1</span><span class="mid">7 <span class="heart">❤</span></span></div><div class="sm" style="margin-top:4px">самое залайканное фото сайта</div></div>
+
+<div class="t" id="cap" style="top:606px"><div class="card"><b>ЖК «Корона» · 21 этаж</b><div class="a">ул. 1812 года, 126</div><div class="a">📷 фото: <span style="color:#ffb03d">zhev_urbex</span></div></div></div>
+
+<div class="t" id="same" style="top:200px"><div class="tag" style="background:#ffb03d;color:#1a0d06">ФАКТ</div><div class="big" style="font-size:32px">Все три вида —<br>с <em>одного дома</em></div><div class="mid" style="margin-top:12px;font-size:21px">ЖК «Корона»,<br>ул. 1812 года, 126</div></div>
+
+<div class="t" id="ask" style="top:150px"><div class="big" style="font-size:34px">Какой вид<br>забрал бы<br>на <em>обои</em>?</div><div class="mid" style="margin-top:16px">Пиши 1, 2 или 3<br>в комменты 👇</div></div>
+
+<div class="t" id="cta" style="top:105px"><div style="font-size:56px">🏙️</div><div class="big" style="font-size:34px">РУФ·РАНДОМАЙЗЕР<br><span style="color:#ff6a3d">КАЛИНИНГРАД</span></div>
+  <div class="sm" style="margin:12px 0 10px;font-size:17px;color:#fff">виды города от пользователей,<br>лайки, топ видов и мини-игра 🎰</div>
+  <div class="pill">k8899320-eng.github.io<br>/KaliningradRandomRuf</div><div class="mid" style="margin-top:12px">👉 ссылка в профиле</div>
+  <div class="sm" style="margin-top:12px;font-size:12px;color:#aab2c5">Береги себя: крыши опасны, а без разрешения — нарушение закона</div></div>
+
+<script>
+const cv=document.getElementById("c"), ctx=cv.getContext("2d"), S=2.5, W=432, H=768;
+const T=s=>document.getElementById(s);
+function show(id){T(id).classList.add("on")} function hide(id){T(id).classList.remove("on")}
+const SRC=["../data/photos/mwaq9vxt-hbe1pi.jpg","../data/photos/mwaqc0og-aizw9i.jpg","../data/photos/mwaqawkk-f8sxo2.jpg"]; // #3, #2, #1
+const IM=SRC.map(s=>{const i=new Image();i.src=s;return i});
+// сцены фото: [начало, конец, индекс]
+const SH=[[2.6,7.0,0],[7.0,11.4,1],[11.4,16.4,2]];
+const tl=[
+  [0.0,()=>show("hook")],
+  [2.6,()=>{hide("hook");show("r3");show("cap")}],
+  [7.0,()=>{hide("r3");show("r2")}],
+  [11.4,()=>{hide("r2");show("r1")}],
+  [16.4,()=>{hide("r1");hide("cap");show("same")}],
+  [19.0,()=>{hide("same");show("ask")}],
+  [21.8,()=>{hide("ask");show("cta")}],
+];
+let t0=null; const now=()=>(performance.now()-t0)/1000;
+let k=0; const ease=t=>1-Math.pow(1-t,3); const cl=v=>Math.max(0,Math.min(1,v));
+function cover(img,x,y,w,h,z,dx,dy){ // рисует img с заполнением области, зум z и смещение
+  const r=Math.max(w/img.width,h/img.height)*z, iw=img.width*r, ih=img.height*r;
+  ctx.drawImage(img,x+(w-iw)/2+dx,y+(h-ih)/2+dy,iw,ih);
+}
+const BL=new Map();
+function bg(img,a){ let b=BL.get(img); if(!b){ b=document.createElement("canvas"); b.width=W; b.height=H; const c2=b.getContext("2d"); c2.filter="blur(18px) brightness(.55)";
+    const r=Math.max((W+60)/img.width,(H+60)/img.height), iw=img.width*r, ih=img.height*r; c2.drawImage(img,(W-iw)/2,(H-ih)/2,iw,ih); BL.set(img,b); }
+  ctx.save(); ctx.globalAlpha=a; ctx.drawImage(b,0,0,W,H); ctx.restore(); }
+function photo(img,p,a,slide){
+  // карточка 4:3 крупно + медленный наезд
+  const cw=W-24, ch=cw*1.08, cx=12+slide, cy=150;
+  ctx.save(); ctx.globalAlpha=a;
+  ctx.shadowColor="rgba(0,0,0,.6)"; ctx.shadowBlur=24;
+  ctx.beginPath(); ctx.roundRect(cx,cy,cw,ch,20); ctx.fillStyle="#000"; ctx.fill(); ctx.shadowBlur=0;
+  ctx.clip(); cover(img,cx,cy,cw,ch,1.04+0.10*p, (p-.5)*-40, 0);
+  ctx.restore();
+}
+function draw(){
+  if(t0===null) t0=performance.now();
+  const t=now();
+  while(k<tl.length&&t>=tl[k][0]){tl[k][1]();k++}
+  ctx.setTransform(S,0,0,S,0,0); ctx.filter="none"; ctx.globalAlpha=1;
+  const g=ctx.createLinearGradient(0,0,0,H); g.addColorStop(0,"#0b0e1a"); g.addColorStop(.6,"#1b1838"); g.addColorStop(1,"#3a1f2e");
+  ctx.fillStyle=g; ctx.fillRect(0,0,W,H);
+  const ok=IM.every(i=>i.complete&&i.naturalWidth);
+  if(ok){
+    if(t<2.6){ // хук: три фото веером
+      bg(IM[2],1);
+      [0,1,2].forEach(i=>{const a=ease(cl((t-.15-i*.25)/.5)); ctx.save(); ctx.globalAlpha=a;
+        const cx=W/2+(i-1)*112, cy=520+Math.abs(i-1)*14; ctx.translate(cx,cy); ctx.rotate((i-1)*.12);
+        const w=136,h=102; ctx.shadowColor="rgba(0,0,0,.6)";ctx.shadowBlur=18; ctx.fillStyle="#fff"; ctx.beginPath();ctx.roundRect(-w/2-5,-h/2-5,w+10,h+10,10);ctx.fill(); ctx.shadowBlur=0;
+        ctx.beginPath();ctx.roundRect(-w/2,-h/2,w,h,7);ctx.clip(); cover(IM[i],-w/2,-h/2,w,h,1,0,0); ctx.restore();});
+    } else if(t<16.4+0.6){
+      let cur=SH.findIndex(s=>t>=s[0]&&t<s[1]); if(cur<0) cur=2;
+      const s=SH[cur], p=cl((t-s[0])/(s[1]-s[0]));
+      bg(IM[s[2]],1);
+      const inA=ease(cl((t-s[0])/.45));
+      photo(IM[s[2]],p,inA,(1-inA)*40);
+      if(t>=16.4){ ctx.fillStyle="rgba(8,10,16,"+(.7*cl((t-16.4)/.5))+")"; ctx.fillRect(0,0,W,H); }
+    } else {
+      bg(IM[2],1);
+      const a=t<21.8?.55:.82; ctx.fillStyle="rgba(8,10,16,"+a+")"; ctx.fillRect(0,0,W,H);
+      if(t<21.8){ // мини-коллаж под фактом и вопросом
+        [0,1,2].forEach(i=>{const w=124,h=93,x=12+i*(w+10),y=420; ctx.save(); ctx.beginPath();ctx.roundRect(x,y,w,h,10);ctx.clip();cover(IM[i],x,y,w,h,1,0,0);ctx.restore();
+          ctx.fillStyle="#ffb03d";ctx.font="900 18px system-ui";ctx.textAlign="left";ctx.fillText("#"+(3-i),x+8,y+24);});
+      }
+    }
+  }
+  requestAnimationFrame(draw);
+}
+Promise.all(IM.map(i=>i.decode().catch(()=>{}))).then(()=>requestAnimationFrame(draw));
+window.__dur=25;
+</script></body></html>
