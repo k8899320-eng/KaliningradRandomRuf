@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="ru"><head><meta charset="UTF-8"><meta name="viewport" content="width=432,height=768">
+<!-- Ролик «Все высотки Калининграда друг на друга». Данные: promo/data/buildings.json (OSM, обновл. 2026-11-09):
+     676 домов от 9 этажей, 6 974 этажа; высота = OSM height, где есть (83 дома), иначе 3 м/этаж → ≈21 156 м.
+     Рекорд игры «Руфер»: Креатор — 25 100 м (game/index.html, PINNED). -->
+<style>
+  html,body{margin:0;width:432px;height:768px;overflow:hidden;background:#0b0e1a;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;color:#fff}
+  canvas{position:absolute;inset:0}
+  .t{position:absolute;left:0;right:0;text-align:center;padding:0 18px;opacity:0;transform:translateY(16px);transition:opacity .4s,transform .45s cubic-bezier(.2,1.4,.4,1)}
+  .t.on{opacity:1;transform:none}
+  .big{font-weight:900;font-size:36px;line-height:1.08;text-shadow:0 3px 14px rgba(0,0,0,.6)}
+  .big em{font-style:normal;color:#ffb03d}
+  .mid{font-weight:800;font-size:23px;line-height:1.2;text-shadow:0 2px 10px rgba(0,0,0,.6)}
+  .sm{font-size:15px;color:#cfd5e1;font-weight:600}
+  .tag{display:inline-block;background:#ff6a3d;color:#fff;border-radius:999px;padding:5px 14px;font-weight:900;font-size:18px;margin-bottom:10px}
+  .card{position:absolute;left:14px;width:250px;background:rgba(10,12,24,.78);border:2px solid rgba(255,255,255,.18);border-radius:16px;padding:10px 14px;font-weight:800;font-size:19px;line-height:1.25;opacity:0;transform:translateX(-30px);transition:all .4s cubic-bezier(.2,1.4,.4,1)}
+  .card.on{opacity:1;transform:none}
+  .card.off{opacity:0;transform:translateY(-20px)}
+  .card small{display:block;font-size:14px;color:#cfd5e1;font-weight:600;margin-top:2px}
+  .pill{display:inline-block;background:#ffb03d;color:#1a0d06;border-radius:14px;padding:10px 14px;font-weight:900;font-size:20px;line-height:1.2}
+  #alt{position:absolute;left:16px;top:212px;width:290px;font-weight:900;font-size:44px;color:#fff;opacity:0;transition:opacity .3s;text-shadow:0 3px 16px rgba(0,0,0,.7)}
+  #alt span{font-size:24px;color:#ffb03d}
+  #floors{position:absolute;left:18px;top:272px;font-weight:700;font-size:16px;color:#cfd5e1;opacity:0;transition:opacity .3s}
+  .panel{display:inline-block;background:rgba(10,12,24,.82);border:2px solid rgba(255,255,255,.15);border-radius:20px;padding:16px 18px}
+  .src{position:absolute;bottom:0;left:0;right:0;text-align:center;font-size:11px;color:#8a92a7;background:rgba(8,10,16,.85);padding:6px 0 9px}
+</style></head><body>
+<canvas id="c" width="1080" height="1920" style="width:432px;height:768px"></canvas>
+
+<div class="t" id="hook" style="top:64px"><div class="tag">ЭКСПЕРИМЕНТ 🧱</div><div class="big">Ставим <em>все 676</em><br>высоток Калининграда<br>друг на друга</div><div class="mid" style="margin-top:10px;font-size:21px">Какой высоты будет башня?</div></div>
+
+<div class="t" id="climb" style="top:70px;text-align:left;padding-left:18px"><div class="mid" style="font-size:20px">🧱 Стопка из всех высоток</div></div>
+<div id="alt">0 <span>м</span></div>
+<div id="floors">0 этажей</div>
+
+<div class="card" id="c1" style="top:330px">🏢 Внизу — <span style="color:#ffb03d">Гайдара, 90</span><small>25 эт., 82 м — самый высокий в городе</small></div>
+<div class="card" id="c2" style="top:420px">🏔 <span style="color:#7dd3fc">Эверест — 8 849 м</span><small>это меньше половины нашей башни</small></div>
+<div class="card" id="c3" style="top:510px">✈️ <span style="color:#7dd3fc">~10 км</span> — тут летают самолёты<small>а башня всё ещё растёт…</small></div>
+
+<div class="t" id="res" style="top:300px"><div class="panel"><div class="tag" style="background:#4ade80;color:#06210f">ИТОГ ✅</div><div class="big" style="font-size:48px"><em>≈ 21 км</em></div><div class="mid" style="margin-top:6px;font-size:20px">6 974 этажа · почти 2,4 Эвереста</div></div></div>
+
+<div class="t" id="rec" style="top:250px"><div class="panel"><div class="tag" style="background:#ffd23d;color:#1a0d06">🏆 НО ЕСТЬ НЮАНС</div><div class="mid" style="font-size:24px">Рекорд в нашей игре<br>«Руфер» — <span style="color:#ffd23d">25 100 м</span></div><div class="sm" style="margin-top:8px;font-size:17px;color:#fff">Игрок <b style="color:#ffd23d">Креатор</b> забрался выше,<br>чем все высотки города вместе 🤯</div></div></div>
+
+<div class="t" id="ask" style="top:230px"><div class="panel"><div class="big" style="font-size:34px">А сколько метров<br>наберёшь <em>ты</em>?</div><div class="mid" style="margin-top:16px">Кидай рекорд в комменты 👇</div></div></div>
+
+<div class="t" id="cta" style="top:110px"><div style="font-size:60px">🏢</div><div class="big" style="font-size:34px">РУФ·РАНДОМАЙЗЕР<br><span style="color:#ff6a3d">КАЛИНИНГРАД</span></div>
+  <div class="sm" style="margin:12px 0 10px;font-size:17px;color:#fff">676 высоток на карте, виды с крыш<br>от пользователей и игра «Руфер» 🎮</div>
+  <div class="pill">k8899320-eng.github.io<br>/KaliningradRandomRuf</div><div class="mid" style="margin-top:12px">👉 ссылка в профиле</div>
+  <div class="sm" style="margin-top:12px;font-size:12px;color:#aab2c5">Береги себя: крыши опасны, а без разрешения — нарушение закона</div></div>
+<div class="src" id="src">Данные: OpenStreetMap · дома от 9 этажей · высота ≈3 м/этаж, где не указана</div>
+
+<script>
+const cv=document.getElementById("c"), ctx=cv.getContext("2d"), S=2.5, W=432, H=768;
+const T=s=>document.getElementById(s);
+const TOTAL=21156, FLOORS=6974, REC=25100, MAXG=26000;
+const stars=[...Array(110)].map(()=>({x:Math.random()*W,y:Math.random()*H,r:Math.random()*1.4+.3,p:Math.random()*6}));
+const far=[];let x=0;while(x<W+60){const w=24+Math.random()*40;far.push({x,w,h:60+Math.random()*120});x+=w+2}
+const clouds=[...Array(7)].map((_,i)=>({x:Math.random()*W,y:Math.random()*H,w:80+Math.random()*90,s:.4+Math.random()*.6}));
+function show(id){T(id).classList.add("on")} function hide(id){T(id).classList.remove("on")}
+const t0=performance.now(); const now=()=>(performance.now()-t0)/1000;
+const ease=t=>t<.5?2*t*t:1-Math.pow(-2*t+2,2)/2;
+let mode="hook", dim=0;
+// высота «камеры» во времени
+function altAt(t){
+  if(t<2.6) return 0;
+  if(t<10.6) return TOTAL*ease((t-2.6)/8);
+  if(t<12.6) return TOTAL;
+  if(t<14.6) return TOTAL+(REC-TOTAL)*ease((t-12.6)/2);
+  return REC;
+}
+const tl=[
+  [0.0,()=>show("hook")],
+  [2.6,()=>{hide("hook");show("climb");T("alt").style.opacity=1;T("floors").style.opacity=1;mode="climb"}],
+  [3.0,()=>T("c1").classList.add("on")],
+  [6.3,()=>T("c2").classList.add("on")],
+  [6.9,()=>T("c3").classList.add("on")],
+  [10.7,()=>{["c1","c2","c3"].forEach(c=>T(c).classList.add("off"));T("floors").style.opacity=0;show("res")}],
+  [12.6,()=>{hide("res");T("alt").style.opacity=0;show("rec")}],
+  [16.4,()=>{hide("rec");hide("climb");mode="ask";show("ask")}],
+  [19.4,()=>{hide("ask");show("cta");dim=1;T("src").style.opacity=0}],
+];
+let k=0;
+function rr(x,y,w,h,r){ctx.beginPath();ctx.roundRect(x,y,w,h,r);ctx.fill()}
+const fmt=n=>Math.round(n).toLocaleString("ru-RU").replace(/,/g," ");
+function draw(){
+  const t=now();
+  while(k<tl.length&&t>=tl[k][0]){tl[k][1]();k++}
+  const A=altAt(t), q=Math.min(1,A/REC);
+  ctx.setTransform(S,0,0,S,0,0);
+  // небо темнеет с высотой
+  const lerp=(a,b,p)=>a.map((v,i)=>Math.round(v+(b[i]-v)*p));
+  const top=lerp([27,24,56],[2,3,10],q), bot=lerp([58,31,46],[18,30,70],q);
+  const g=ctx.createLinearGradient(0,0,0,H); g.addColorStop(0,`rgb(${top})`); g.addColorStop(1,`rgb(${bot})`);
+  ctx.fillStyle=g; ctx.fillRect(0,0,W,H);
+  for(const s of stars){ctx.globalAlpha=(.3+.7*q)*(.4+.6*Math.abs(Math.sin(t*1.5+s.p)));ctx.fillStyle="#fff";ctx.fillRect(s.x,s.y,s.r,s.r)} ctx.globalAlpha=1;
+  // земля и город уезжают вниз
+  const lift=Math.min(A*0.9,900);
+  const ground=H-70+lift;
+  if(ground<H+200){
+    ctx.fillStyle="#1d1e38"; for(const b of far) ctx.fillRect(b.x,ground-b.h,b.w,b.h+70);
+    ctx.fillStyle="#141624"; ctx.fillRect(0,ground,W,H);
+  }
+  // облака на высоте 1–12 км
+  if(A>800&&A<14000){ const cp=Math.min(1,(A-800)/1500)*Math.min(1,(14000-A)/2000);
+    ctx.globalAlpha=.25*cp; ctx.fillStyle="#e6ecff";
+    for(const c of clouds){ const y=((c.y+A*0.25*c.s)%(H+80))-40; rr(c.x-c.w/2,y,c.w,22,11); } ctx.globalAlpha=1; }
+  // башня: бесконечная колонна, текстура этажей едет вниз
+  const tx=W-90, tw=84, fh=14;
+  const towerBottom= mode==="hook" ? ground : Math.min(H, ground);
+  const towerTop = mode==="hook" ? ground-25*fh : -10;
+  if(mode!=="hook" || true){
+    const bodyTop = mode==="hook" ? towerTop : -10;
+    ctx.fillStyle="#2d2f4a"; ctx.fillRect(tx-tw/2,bodyTop,tw,towerBottom-bodyTop);
+    const shift=(A/3*fh)%(fh*9);
+    for(let y=towerBottom-fh; y>bodyTop-fh*9; y-=fh){
+      const yy=y+ (mode==="hook"?0:shift%fh);
+      if(yy<bodyTop||yy>towerBottom-fh) continue;
+      const fi=Math.floor((towerBottom-y)/fh);
+      // полоса-стык между домами каждые ~9–12 этажей
+      if((fi+Math.floor(shift/fh))%10===0){ctx.fillStyle="#ff6a3d";ctx.fillRect(tx-tw/2-4,yy+fh-3,tw+8,3)}
+      for(let c=0;c<4;c++){ ctx.fillStyle=((fi*7+c*3+Math.floor(A/40))%5)?"#ffd27a":"#3a3f5c"; ctx.fillRect(tx-tw/2+9+c*20,yy+3,10,7); }
+    }
+  }
+  // шкала справа
+  const gx=W-30, gy0=H-80, gy1=110, gy=v=>gy0-(gy0-gy1)*v/MAXG;
+  if(mode==="climb"&&!dim){
+    ctx.fillStyle="rgba(255,255,255,.15)"; rr(gx-5,gy1,10,gy0-gy1,5);
+    ctx.fillStyle= A>TOTAL+10 ? "#ffd23d" : "#ffb03d"; rr(gx-5,gy(A),10,gy0-gy(A),5);
+    const marks=[[8849,"🏔"],[10000,"✈️"],[TOTAL,"🧱"],[REC,"🏆"]];
+    ctx.font="16px system-ui"; ctx.textAlign="right";
+    for(const [v,e] of marks){ ctx.fillStyle="rgba(255,255,255,.7)"; ctx.fillRect(gx-12,gy(v),24,2); ctx.fillText(e,gx-14,gy(v)+6); }
+  }
+  T("alt").innerHTML=fmt(A)+" <span>м</span>";
+  T("floors").textContent=fmt(Math.min(FLOORS,FLOORS*A/TOTAL))+" этажей в стопке";
+  if(dim){ ctx.fillStyle="rgba(8,10,16,.84)"; ctx.fillRect(0,0,W,H); }
+  requestAnimationFrame(draw);
+}
+requestAnimationFrame(draw);
+window.__dur=24;
+</script></body></html>
