@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="ru"><head><meta charset="UTF-8"><meta name="viewport" content="width=432,height=768">
+<!-- Ролик «Север против Юга»: 676 высоток из базы сайта (data/buildings.json) на карте, деление по широте острова Канта (54.7065). Север 452, Юг 224. Данные на 21.11.2026 -->
+<style>
+  html,body{margin:0;width:432px;height:768px;overflow:hidden;background:#0b0e1a;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;color:#fff}
+  canvas{position:absolute;inset:0}
+  .t{position:absolute;left:0;right:0;text-align:center;padding:0 18px;opacity:0;transform:translateY(16px);transition:opacity .4s,transform .45s cubic-bezier(.2,1.4,.4,1)}
+  .t.on{opacity:1;transform:none}
+  .big{font-weight:900;font-size:38px;line-height:1.06;text-shadow:0 2px 12px rgba(0,0,0,.6)}
+  .big em{font-style:normal;color:#ffb03d}
+  .mid{font-weight:800;font-size:24px;line-height:1.2;text-shadow:0 2px 10px rgba(0,0,0,.6)}
+  .mid em{font-style:normal;color:#ffb03d}
+  .sm{font-size:15px;color:#e3e7ef;font-weight:600;text-shadow:0 1px 6px rgba(0,0,0,.7)}
+  .tag{display:inline-block;background:#ff6a3d;color:#fff;border-radius:999px;padding:5px 14px;font-weight:900;font-size:18px;margin-bottom:10px}
+  .pill{display:inline-block;background:#ffb03d;color:#1a0d06;border-radius:14px;padding:10px 14px;font-weight:900;font-size:20px;line-height:1.2}
+  .card{display:inline-block;background:rgba(10,12,24,.8);border-radius:16px;padding:10px 16px;text-align:left;border:2px solid rgba(255,255,255,.12)}
+  .card b{font-size:19px} .card .a{font-size:15px;color:#cfd5e1;font-weight:700;margin-top:3px}
+  .n{color:#4fc3ff} .s{color:#ff6a8a}
+  .score{display:flex;justify-content:center;gap:26px;align-items:flex-end}
+  .score div{text-align:center} .score .v{font-weight:900;font-size:62px;line-height:1;text-shadow:0 3px 14px rgba(0,0,0,.6)}
+  .score .l{font-weight:900;font-size:18px;letter-spacing:2px}
+</style></head><body>
+<canvas id="c" width="1080" height="1920" style="width:432px;height:768px"></canvas>
+
+<div class="t" id="hook" style="top:64px"><div class="tag">🧭 БАТТЛ</div><div class="big"><span class="n">СЕВЕР</span> 🆚 <span class="s">ЮГ</span></div><div class="mid" style="margin-top:10px">Где в <em>Калининграде</em><br>больше высоток?</div></div>
+
+<div class="t" id="map" style="top:58px"><div class="mid" style="font-size:22px"><em>676</em> высоток 9+ этажей<br>на одной карте</div><div class="sm" style="margin-top:6px">каждая точка — дом с сайта</div></div>
+<div class="t" id="line" style="top:58px"><div class="mid" style="font-size:22px">Делим город по линии<br>через <em>остров Канта</em></div><div class="sm" style="margin-top:6px">выше — север, ниже — юг</div></div>
+
+<div class="t" id="score" style="top:52px"><div class="score"><div><div class="v n" id="vn">0</div><div class="l n">СЕВЕР</div></div><div style="font-weight:900;font-size:30px;padding-bottom:22px">:</div><div><div class="v s" id="vs">0</div><div class="l s">ЮГ</div></div></div></div>
+<div class="t" id="x2" style="top:600px"><div class="pill">На севере высоток<br>в 2 раза больше 🏆</div></div>
+
+<div class="t" id="chN" style="top:56px"><div class="tag" style="background:#4fc3ff;color:#06131c">👑 ЧЕМПИОН СЕВЕРА</div><div class="card"><b>ул. Гайдара, 90 · 25 этажей</b><div class="a">самый этажный дом в базе сайта</div></div></div>
+<div class="t" id="chS" style="top:56px"><div class="tag" style="background:#ff6a8a">👑 ЧЕМПИОН ЮГА</div><div class="card"><b>Интернациональная, 64 · 17 этажей</b><div class="a">выше на юге в базе нет</div></div></div>
+
+<div class="t" id="ask" style="top:40px"><div class="big" style="font-size:34px">А ты с какой<br>стороны?</div><div class="mid" style="margin-top:16px">Пиши <span class="n">С</span> или <span class="s">Ю</span><br>в комменты 👇</div><div class="sm" style="margin-top:14px">и с какой крыши вид лучше</div></div>
+
+<div class="t" id="cta" style="top:105px"><div style="font-size:56px">🏙️</div><div class="big" style="font-size:34px">РУФ·РАНДОМАЙЗЕР<br><span style="color:#ff6a3d">КАЛИНИНГРАД</span></div>
+  <div class="sm" style="margin:12px 0 10px;font-size:17px;color:#fff">676 высоток на карте, рандомайзер,<br>виды от пользователей и мини-игра 🎰</div>
+  <div class="pill">k8899320-eng.github.io<br>/KaliningradRandomRuf</div><div class="mid" style="margin-top:12px">👉 ссылка в профиле</div>
+  <div class="sm" style="margin-top:12px;font-size:11px;color:#aab2c5;padding:0 6px">Береги себя: крыши опасны, а без разрешения — нарушение закона</div></div>
+
+<script>
+const cv=document.getElementById("c"), ctx=cv.getContext("2d"), S=2.5, W=432, H=768;
+const T=s=>document.getElementById(s);
+function show(id){T(id).classList.add("on")} function hide(id){T(id).classList.remove("on")}
+const CLAT=54.7065; // широта острова Канта
+const LAT0=54.655, LAT1=54.785, LON0=20.345, LON1=20.62, KX=Math.cos(54.72*Math.PI/180);
+const MX=12, MW=W-24, MH=MW*(LAT1-LAT0)/((LON1-LON0)*KX), MY=(H-MH)/2+30;
+const px=lon=>MX+(lon-LON0)/(LON1-LON0)*MW, py=lat=>MY+(LAT1-lat)/(LAT1-LAT0)*MH;
+const LY=py(CLAT);
+let P=[];
+const tl=[
+  [0.0,()=>show("hook")],
+  [2.6,()=>{hide("hook");show("map")}],
+  [6.0,()=>{hide("map");show("line")}],
+  [8.8,()=>{hide("line");show("score")}],
+  [10.6,()=>show("x2")],
+  [12.8,()=>{hide("score");hide("x2");show("chN")}],
+  [15.4,()=>{hide("chN");show("chS")}],
+  [18.0,()=>{hide("chS");show("ask")}],
+  [20.8,()=>{hide("ask");show("cta")}],
+];
+let t0=null; const now=()=>(performance.now()-t0)/1000;
+let k=0; const ease=t=>1-Math.pow(1-t,3); const cl=v=>Math.max(0,Math.min(1,v));
+const CH={N:[54.73799,20.491636],S:[54.668383,20.507983]};
+function col(lv,a){ const c=lv>=17?"255,176,61":lv>=12?"255,120,90":"200,215,255"; return `rgba(${c},${a})`; }
+function draw(){
+  if(t0===null) t0=performance.now();
+  const t=now();
+  while(k<tl.length&&t>=tl[k][0]){tl[k][1]();k++}
+  ctx.setTransform(S,0,0,S,0,0); ctx.globalAlpha=1;
+  const g=ctx.createLinearGradient(0,0,0,H); g.addColorStop(0,"#0b0e1a"); g.addColorStop(.6,"#141a36"); g.addColorStop(1,"#2a1a30");
+  ctx.fillStyle=g; ctx.fillRect(0,0,W,H);
+  const split=t>=6.0, sp=ease(cl((t-6.2)/1.2));
+  // подсветка половин
+  if(split){
+    ctx.fillStyle=`rgba(79,195,255,${.10*sp})`; ctx.fillRect(MX,MY,MW,LY-MY);
+    ctx.fillStyle=`rgba(255,106,138,${.10*sp})`; ctx.fillRect(MX,LY,MW,MY+MH-LY);
+  }
+  // рамка карты
+  ctx.strokeStyle="rgba(255,255,255,.08)"; ctx.lineWidth=1; ctx.beginPath(); ctx.roundRect(MX,MY,MW,MH,14); ctx.stroke();
+  // точки
+  const appear=t<2.6? cl(t/2.4)*0.25 : 0.25+0.75*ease(cl((t-2.6)/2.6));
+  const n=Math.floor(P.length*appear);
+  const zoomN=t>=12.8&&t<15.4, zoomS=t>=15.4&&t<18.0, dim=(t>=18.0)?.35:1;
+  for(let i=0;i<n;i++){ const p=P[i]; let x=px(p[1]), y=py(p[0]); let a=.85*dim;
+    if(split&&t>=8.8&&t<12.8){ const north=p[0]>CLAT; a*=1; }
+    if(zoomN&&p[0]<=CLAT) a*=.3; if(zoomS&&p[0]>CLAT) a*=.3;
+    const r=1.9+ (p[2]-9)*0.22;
+    ctx.fillStyle=split? (p[0]>CLAT?`rgba(79,195,255,${a})`:`rgba(255,106,138,${a})`) : col(p[2],a);
+    ctx.beginPath(); ctx.arc(x,y,r,0,7); ctx.fill(); }
+  // линия раздела
+  if(split){ ctx.save(); ctx.setLineDash([8,6]); ctx.strokeStyle="#fff"; ctx.lineWidth=2; ctx.beginPath(); ctx.moveTo(MX,LY); ctx.lineTo(MX+MW*sp,LY); ctx.stroke(); ctx.restore();
+    const kx=px(20.5115); ctx.globalAlpha=sp; ctx.fillStyle="#ffb03d"; ctx.beginPath(); ctx.arc(kx,LY,5,0,7); ctx.fill();
+    ctx.font="800 12px system-ui"; ctx.textAlign="center"; const tw=ctx.measureText("остров Канта").width; ctx.fillStyle="rgba(8,10,20,.85)"; ctx.beginPath(); ctx.roundRect(kx-tw/2-7,LY+8,tw+14,18,9); ctx.fill(); ctx.fillStyle="#fff"; ctx.fillText("остров Канта",kx,LY+21); ctx.globalAlpha=1;
+    if(t>=8.8&&t<12.8){ ctx.font="900 20px system-ui"; ctx.textAlign="left"; ctx.fillStyle="#4fc3ff"; ctx.fillText("СЕВЕР",MX+10,MY+26); ctx.fillStyle="#ff6a8a"; ctx.fillText("ЮГ",MX+10,MY+MH-12); }
+  }
+  // счётчики
+  if(t>=8.8){ const p=ease(cl((t-8.9)/1.4)); T("vn").textContent=Math.round(452*p); T("vs").textContent=Math.round(224*p); }
+  // чемпионы
+  [[zoomN,CH.N,"#4fc3ff",12.8],[zoomS,CH.S,"#ff6a8a",15.4]].forEach(([on,c,cc,st])=>{ if(!on) return;
+    const x=px(c[1]), y=py(c[0]), q=ease(cl((t-st)/.6)), pulse=(Math.sin((t-st)*6)+1)/2;
+    ctx.strokeStyle=cc; ctx.lineWidth=3; ctx.globalAlpha=q; ctx.beginPath(); ctx.arc(x,y,10+pulse*8,0,7); ctx.stroke();
+    ctx.fillStyle="#fff"; ctx.beginPath(); ctx.arc(x,y,5,0,7); ctx.fill(); ctx.globalAlpha=1; });
+  if(t>=20.8){ ctx.fillStyle=`rgba(8,10,16,${.85*cl((t-20.8)/.5)})`; ctx.fillRect(0,0,W,H); }
+  requestAnimationFrame(draw);
+}
+fetch("../data/buildings.json").then(r=>r.json()).then(d=>{
+  P=d.buildings.map(b=>[b.lat,b.lon,b.lv]);
+  // порядок появления: от центра к окраинам
+  P.sort((a,b)=>Math.hypot(a[0]-CLAT,(a[1]-20.5115)*KX)-Math.hypot(b[0]-CLAT,(b[1]-20.5115)*KX));
+  requestAnimationFrame(draw);
+});
+window.__dur=24;
+</script></body></html>
