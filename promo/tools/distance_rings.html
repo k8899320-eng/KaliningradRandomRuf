@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="ru"><head><meta charset="UTF-8"><meta name="viewport" content="width=432,height=768">
+<!-- Ролик «Высотки вокруг Кафедрала»: 676 высоток из data/buildings.json, расстояние от Кафедрального собора (54.7065, 20.5115). 1 км — 54, 2 км — 105, 3 км — 195, 5 км — 564 (83%). Ближайшая: Эпроновская, 33 (340 м), дальняя: Тихоокеанская, 44 (10,3 км). Данные на 23.11.2026 -->
+<style>
+  html,body{margin:0;width:432px;height:768px;overflow:hidden;background:#0b0e1a;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;color:#fff}
+  canvas{position:absolute;inset:0}
+  .t{position:absolute;left:0;right:0;text-align:center;padding:0 18px;opacity:0;transform:translateY(16px);transition:opacity .4s,transform .45s cubic-bezier(.2,1.4,.4,1)}
+  .t.on{opacity:1;transform:none}
+  .big{font-weight:900;font-size:38px;line-height:1.06;text-shadow:0 2px 12px rgba(0,0,0,.6)}
+  .big em{font-style:normal;color:#ffb03d}
+  .mid{font-weight:800;font-size:24px;line-height:1.2;text-shadow:0 2px 10px rgba(0,0,0,.6)}
+  .mid em{font-style:normal;color:#ffb03d}
+  .sm{font-size:15px;color:#e3e7ef;font-weight:600;text-shadow:0 1px 6px rgba(0,0,0,.7)}
+  .tag{display:inline-block;background:#ff6a3d;color:#fff;border-radius:999px;padding:5px 14px;font-weight:900;font-size:18px;margin-bottom:10px}
+  .pill{display:inline-block;background:#ffb03d;color:#1a0d06;border-radius:14px;padding:10px 14px;font-weight:900;font-size:20px;line-height:1.2}
+  .card{display:inline-block;background:rgba(10,12,24,.8);border-radius:16px;padding:10px 16px;text-align:left;border:2px solid rgba(255,255,255,.12)}
+  .card b{font-size:19px} .card .a{font-size:15px;color:#cfd5e1;font-weight:700;margin-top:3px}
+  .ring{display:flex;justify-content:center;align-items:flex-end;gap:12px} .ring .v{font-weight:900;font-size:64px;line-height:1;color:#ffb03d;text-shadow:0 3px 14px rgba(0,0,0,.6)} .ring .l{font-weight:800;font-size:19px;text-align:left;line-height:1.15;padding-bottom:6px}
+  .opt{display:inline-block;background:rgba(255,255,255,.12);border:2px solid rgba(255,255,255,.25);border-radius:14px;padding:6px 16px;font-weight:900;font-size:26px;margin:0 4px}
+  .score{display:flex;justify-content:center;gap:26px;align-items:flex-end}
+  .score div{text-align:center} .score .v{font-weight:900;font-size:62px;line-height:1;text-shadow:0 3px 14px rgba(0,0,0,.6)}
+  .score .l{font-weight:900;font-size:18px;letter-spacing:2px}
+</style></head><body>
+<canvas id="c" width="1080" height="1920" style="width:432px;height:768px"></canvas>
+
+<div class="t" id="hook" style="top:64px"><div class="tag">⛪ ОТ КАФЕДРАЛА</div><div class="big">Сколько высоток<br>в <em>1 км</em><br>от Кафедрала?</div></div>
+
+<div class="t" id="map" style="top:52px"><div class="mid" style="font-size:22px"><em>676</em> высоток 9+ этажей</div><div class="sm" style="margin-top:6px">в центре карты — Кафедральный собор</div></div>
+<div class="t" id="guess" style="top:52px"><div class="mid" style="font-size:22px">Угадай, сколько их<br>в радиусе <em>1 км</em>?</div><div style="margin-top:10px"><span class="opt">15</span><span class="opt">54</span><span class="opt">120</span></div></div>
+
+<div class="t" id="r1" style="top:52px"><div class="ring"><div class="v" id="v1">0</div><div class="l">высотки<br>в 1 км</div></div></div>
+<div class="t" id="near" style="top:600px"><div class="card"><b>📍 Ближе всех: Эпроновская, 33</b><div class="a">11 этажей · 340 м от Кафедрала</div></div></div>
+
+<div class="t" id="r23" style="top:52px"><div class="ring"><div class="v" id="v2">0</div><div class="l">в 2 км</div><div class="v" id="v3" style="margin-left:10px">0</div><div class="l">в 3 км</div></div></div>
+<div class="t" id="r5" style="top:52px"><div class="ring"><div class="v" id="v5">0</div><div class="l">в 5 км</div></div><div class="mid" style="font-size:21px;margin-top:4px">это <em>83%</em> всех высоток</div></div>
+
+<div class="t" id="far" style="top:600px"><div class="card"><b>🧭 Дальше всех: Тихоокеанская, 44</b><div class="a">9 этажей · 10,3 км от Кафедрала</div></div></div>
+
+<div class="t" id="ask" style="top:40px"><div class="big" style="font-size:34px">А сколько км<br>от твоего дома<br>до <em>Кафедрала</em>?</div><div class="mid" style="margin-top:16px">Пиши в комменты 👇</div></div>
+
+<div class="t" id="cta" style="top:105px"><div style="font-size:56px">🏙️</div><div class="big" style="font-size:34px">РУФ·РАНДОМАЙЗЕР<br><span style="color:#ff6a3d">КАЛИНИНГРАД</span></div>
+  <div class="sm" style="margin:12px 0 10px;font-size:17px;color:#fff">676 высоток на карте, рандомайзер,<br>виды от пользователей и мини-игра 🎰</div>
+  <div class="pill">k8899320-eng.github.io<br>/KaliningradRandomRuf</div><div class="mid" style="margin-top:12px">👉 ссылка в профиле</div>
+  <div class="sm" style="margin-top:12px;font-size:11px;color:#aab2c5;padding:0 6px">Береги себя: крыши опасны, а без разрешения — нарушение закона</div></div>
+
+<script>
+const cv=document.getElementById("c"), ctx=cv.getContext("2d"), S=2.5, W=432, H=768;
+const T=s=>document.getElementById(s);
+function show(id){T(id).classList.add("on")} function hide(id){T(id).classList.remove("on")}
+const C=[54.7065,20.5115], KX=Math.cos(54.7*Math.PI/180);
+const LAT0=54.655, LAT1=54.785, LON0=20.345, LON1=20.62, KXM=Math.cos(54.72*Math.PI/180);
+const MX=12, MW=W-24, MH=MW*(LAT1-LAT0)/((LON1-LON0)*KXM), MY=(H-MH)/2+30;
+const px=lon=>MX+(lon-LON0)/(LON1-LON0)*MW, py=lat=>MY+(LAT1-lat)/(LAT1-LAT0)*MH;
+const KM=MW/((LON1-LON0)*KXM*111.2); // пикселей на км
+const dist=p=>Math.hypot((p[0]-C[0])*111.2,(p[1]-C[1])*111.2*KX);
+let P=[];
+const tl=[
+  [0.0,()=>show("hook")],
+  [2.6,()=>{hide("hook");show("map")}],
+  [5.0,()=>{hide("map");show("guess")}],
+  [8.0,()=>{hide("guess");show("r1")}],
+  [9.4,()=>show("near")],
+  [11.8,()=>{hide("r1");hide("near");show("r23")}],
+  [14.4,()=>{hide("r23");show("r5")}],
+  [16.6,()=>show("far")],
+  [19.0,()=>{hide("r5");hide("far");show("ask")}],
+  [21.6,()=>{hide("ask");show("cta")}],
+];
+let t0=null; const now=()=>(performance.now()-t0)/1000;
+let k=0; const ease=t=>1-Math.pow(1-t,3); const cl=v=>Math.max(0,Math.min(1,v));
+
+function ringR(t){ // текущий радиус выделения в км
+  if(t<8) return 0;
+  if(t<11.8) return 1*ease(cl((t-8)/1.0));
+  if(t<14.4) return 1+2*ease(cl((t-11.8)/1.6));
+  if(t<19) return 3+2*ease(cl((t-14.4)/1.2));
+  return 5;
+}
+function draw(){
+  if(t0===null) t0=performance.now();
+  const t=now();
+  while(k<tl.length&&t>=tl[k][0]){tl[k][1]();k++}
+  ctx.setTransform(S,0,0,S,0,0); ctx.globalAlpha=1;
+  const g=ctx.createLinearGradient(0,0,0,H); g.addColorStop(0,"#0b0e1a"); g.addColorStop(.6,"#141a36"); g.addColorStop(1,"#2a1a30");
+  ctx.fillStyle=g; ctx.fillRect(0,0,W,H);
+  ctx.strokeStyle="rgba(255,255,255,.08)"; ctx.lineWidth=1; ctx.beginPath(); ctx.roundRect(MX,MY,MW,MH,14); ctx.stroke();
+  const cx=px(C[1]), cy=py(C[0]);
+  const R=ringR(t), dim=t>=19?.35:1;
+  // кольца-ориентиры
+  if(t>=2.6){ const a=cl((t-2.6)/.8)*.35*dim; ctx.save(); ctx.beginPath(); ctx.roundRect(MX,MY,MW,MH,14); ctx.clip(); ctx.setLineDash([3,5]); ctx.strokeStyle=`rgba(255,255,255,${a})`; ctx.lineWidth=1;
+    [1,2,3,5,7.5,10].forEach(r=>{ctx.beginPath();ctx.arc(cx,cy,r*KM,0,7);ctx.stroke();}); ctx.restore();
+    ctx.font="700 10px system-ui"; ctx.textAlign="left"; ctx.fillStyle=`rgba(255,255,255,${a*1.6})`;
+    [3,5].forEach(r=>{ctx.fillText(r+" км",cx+r*KM*0.71+3,cy-r*KM*0.71-3)}); }
+  // заливка выбранного радиуса
+  if(R>0){ ctx.fillStyle=`rgba(255,176,61,${.14*dim})`; ctx.beginPath(); ctx.arc(cx,cy,R*KM,0,7); ctx.fill();
+    ctx.strokeStyle=`rgba(255,176,61,${.95*dim})`; ctx.lineWidth=2.5; ctx.beginPath(); ctx.arc(cx,cy,R*KM,0,7); ctx.stroke(); }
+  // точки
+  const appear=t<2.6? cl(t/2.4)*0.3 : 0.3+0.7*ease(cl((t-2.6)/2.0));
+  const n=Math.floor(P.length*appear);
+  for(let i=0;i<n;i++){ const p=P[i]; const x=px(p[1]), y=py(p[0]); const inR=p[3]<=R;
+    const r=1.8+(p[2]-9)*0.2;
+    ctx.fillStyle= inR? `rgba(255,176,61,${.95*dim})` : (R>0? `rgba(200,215,255,${.35*dim})` : `rgba(200,215,255,${.8*dim})`);
+    ctx.beginPath(); ctx.arc(x,y,r,0,7); ctx.fill(); }
+  // Кафедрал
+  const pulse=(Math.sin(t*5)+1)/2;
+  ctx.fillStyle="#fff"; ctx.beginPath(); ctx.arc(cx,cy,4,0,7); ctx.fill();
+  ctx.strokeStyle=`rgba(255,255,255,${.6*dim})`; ctx.lineWidth=2; ctx.beginPath(); ctx.arc(cx,cy,7+pulse*6,0,7); ctx.stroke();
+  if(t>=2.6&&t<8){ ctx.font="800 12px system-ui"; ctx.textAlign="center"; const s="⛪ Кафедрал", tw=ctx.measureText(s).width;
+    ctx.fillStyle="rgba(8,10,20,.85)"; ctx.beginPath(); ctx.roundRect(cx-tw/2-7,cy+12,tw+14,18,9); ctx.fill(); ctx.fillStyle="#fff"; ctx.fillText(s,cx,cy+25); }
+  // ближайшая / дальняя
+  const mark=(p,st,en,cc)=>{ if(!p||t<st||t>=en) return; const x=px(p[1]), y=py(p[0]), q=ease(cl((t-st)/.5)), pu=(Math.sin((t-st)*6)+1)/2;
+    ctx.globalAlpha=q; ctx.strokeStyle=cc; ctx.lineWidth=3; ctx.beginPath(); ctx.arc(x,y,8+pu*7,0,7); ctx.stroke(); ctx.globalAlpha=1; };
+  mark(NEARP,9.4,11.8,"#4fc3ff"); mark(FARP,16.6,19,"#4fc3ff");
+  if(FARP&&t>=16.6&&t<19){ const q=ease(cl((t-16.6)/.8)); const fx=px(FARP[1]), fy=py(FARP[0]);
+    ctx.save(); ctx.setLineDash([6,5]); ctx.strokeStyle="#4fc3ff"; ctx.lineWidth=2; ctx.beginPath(); ctx.moveTo(cx,cy); ctx.lineTo(cx+(fx-cx)*q,cy+(fy-cy)*q); ctx.stroke(); ctx.restore(); }
+  // счётчики
+  const cnt=(t0_,v)=>Math.round(v*ease(cl((t-t0_)/1.2)));
+  if(t>=8) T("v1").textContent=cnt(8,54);
+  if(t>=11.8){ T("v2").textContent=cnt(11.8,105); T("v3").textContent=cnt(12.4,195); }
+  if(t>=14.4) T("v5").textContent=cnt(14.4,564);
+  if(t>=21.6){ ctx.fillStyle=`rgba(8,10,16,${.85*cl((t-21.6)/.5)})`; ctx.fillRect(0,0,W,H); }
+  requestAnimationFrame(draw);
+}
+let NEARP=null, FARP=null;
+fetch("../data/buildings.json").then(r=>r.json()).then(d=>{
+  P=d.buildings.map(b=>{const p=[b.lat,b.lon,b.lv]; p.push(dist(p)); return p;});
+  P.sort((a,b)=>a[3]-b[3]); NEARP=P[0]; FARP=P[P.length-1];
+  requestAnimationFrame(draw);
+});
+window.__dur=25;
+</script></body></html>
