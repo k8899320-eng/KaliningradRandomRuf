@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="ru"><head><meta charset="UTF-8"><meta name="viewport" content="width=432,height=768">
+<!-- Ролик «Крайние высотки»: самые северная/южная/западная/восточная высотки из data/buildings.json (676 домов). Размах 13,4 км С–Ю и 16,7 км З–В. Данные на 25.11.2026 -->
+<style>
+  html,body{margin:0;width:432px;height:768px;overflow:hidden;background:#0b0e1a;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;color:#fff}
+  canvas{position:absolute;inset:0}
+  .t{position:absolute;left:0;right:0;text-align:center;padding:0 18px;opacity:0;transform:translateY(16px);transition:opacity .4s,transform .45s cubic-bezier(.2,1.4,.4,1)}
+  .t.on{opacity:1;transform:none}
+  .big{font-weight:900;font-size:38px;line-height:1.06;text-shadow:0 2px 12px rgba(0,0,0,.6)}
+  .big em{font-style:normal;color:#ffb03d}
+  .mid{font-weight:800;font-size:24px;line-height:1.2;text-shadow:0 2px 10px rgba(0,0,0,.6)}
+  .mid em{font-style:normal;color:#ffb03d}
+  .sm{font-size:15px;color:#e3e7ef;font-weight:600;text-shadow:0 1px 6px rgba(0,0,0,.7)}
+  .tag{display:inline-block;background:#ff6a3d;color:#fff;border-radius:999px;padding:5px 14px;font-weight:900;font-size:18px;margin-bottom:10px}
+  .pill{display:inline-block;background:#ffb03d;color:#1a0d06;border-radius:14px;padding:10px 14px;font-weight:900;font-size:20px;line-height:1.2}
+  .card{display:inline-block;background:rgba(10,12,24,.8);border-radius:16px;padding:10px 16px;text-align:left;border:2px solid rgba(255,255,255,.12)}
+  .card b{font-size:19px} .card .a{font-size:15px;color:#cfd5e1;font-weight:700;margin-top:3px}
+  .n{color:#4fc3ff} .s{color:#ff6a8a}
+  .score{display:flex;justify-content:center;gap:26px;align-items:flex-end}
+  .score div{text-align:center} .score .v{font-weight:900;font-size:62px;line-height:1;text-shadow:0 3px 14px rgba(0,0,0,.6)}
+  .score .l{font-weight:900;font-size:18px;letter-spacing:2px}
+</style></head><body>
+<canvas id="c" width="1080" height="1920" style="width:432px;height:768px"></canvas>
+
+<div class="t" id="hook" style="top:36px"><div class="tag">🧭 НА КРАЮ КАРТЫ</div><div class="big">Где <em>кончаются</em><br>высотки Калининграда?</div><div class="mid" style="margin-top:10px">4 стороны света 👇</div></div>
+<div class="t" id="map" style="top:58px"><div class="mid" style="font-size:22px"><em>676</em> высоток 9+ этажей<br>на одной карте</div><div class="sm" style="margin-top:6px">ищем самые крайние точки</div></div>
+
+<div class="t" id="cN" style="top:56px"><div class="tag" style="background:#4fc3ff;color:#06131c">⬆️ САМАЯ СЕВЕРНАЯ</div><div class="card"><b>Строительная ул., 10А</b><div class="a">9 этажей · построена в 2017</div></div></div>
+<div class="t" id="cS" style="top:56px"><div class="tag" style="background:#ff6a8a">⬇️ САМАЯ ЮЖНАЯ</div><div class="card"><b>Флагманская ул., 3</b><div class="a">10 этажей · построена в 2022</div></div></div>
+<div class="t" id="cW" style="top:56px"><div class="tag" style="background:#7ee08a;color:#06150a">⬅️ САМАЯ ЗАПАДНАЯ</div><div class="card"><b>Тихоокеанская ул., 44</b><div class="a">9 этажей</div></div></div>
+<div class="t" id="cE" style="top:56px"><div class="tag" style="background:#c39bff;color:#120a24">➡️ САМАЯ ВОСТОЧНАЯ</div><div class="card"><b>Калининградское ш., 4Д</b><div class="a">10 этажей · построена в 2020</div></div></div>
+
+<div class="t" id="box" style="top:52px"><div class="mid" style="font-size:22px">Высотный город — это<br><em>≈13 км</em> с севера на юг<br>и <em>≈17 км</em> с запада на восток</div></div>
+
+<div class="t" id="ask" style="top:40px"><div class="big" style="font-size:34px">А ты ближе<br>к какому краю?</div><div class="mid" style="margin-top:16px">Пиши <span style="color:#4fc3ff">С</span>, <span style="color:#ff6a8a">Ю</span>, <span style="color:#7ee08a">З</span> или <span style="color:#c39bff">В</span><br>в комменты 👇</div><div class="sm" style="margin-top:14px">и где на окраинах лучший вид на город</div></div>
+
+<div class="t" id="cta" style="top:105px"><div style="font-size:56px">🏙️</div><div class="big" style="font-size:34px">РУФ·РАНДОМАЙЗЕР<br><span style="color:#ff6a3d">КАЛИНИНГРАД</span></div>
+  <div class="sm" style="margin:12px 0 10px;font-size:17px;color:#fff">676 высоток на карте, рандомайзер,<br>виды от пользователей и мини-игра 🎰</div>
+  <div class="pill">k8899320-eng.github.io<br>/KaliningradRandomRuf</div><div class="mid" style="margin-top:12px">👉 ссылка в профиле</div>
+  <div class="sm" style="margin-top:12px;font-size:11px;color:#aab2c5;padding:0 6px">Береги себя: крыши опасны, а без разрешения — нарушение закона</div></div>
+<div class="src" style="position:absolute;bottom:10px;left:0;right:0;text-align:center;font-size:11px;color:#6b7387">Данные: OpenStreetMap / база сайта</div>
+
+<script>
+const cv=document.getElementById("c"), ctx=cv.getContext("2d"), S=2.5, W=432, H=768;
+const T=s=>document.getElementById(s);
+function show(id){T(id).classList.add("on")} function hide(id){T(id).classList.remove("on")}
+const LAT0=54.652, LAT1=54.787, LON0=20.343, LON1=20.622, KX=Math.cos(54.72*Math.PI/180);
+const MX=12, MW=W-24, MH=MW*(LAT1-LAT0)/((LON1-LON0)*KX), MY=(H-MH)/2+40;
+const px=lon=>MX+(lon-LON0)/(LON1-LON0)*MW, py=lat=>MY+(LAT1-lat)/(LAT1-LAT0)*MH;
+const X={N:[54.779853,20.5951,"#4fc3ff",5.2,"С"],S:[54.659832,20.504148,"#ff6a8a",7.8,"Ю"],W:[54.721471,20.352818,"#7ee08a",10.4,"З"],E:[54.768171,20.612016,"#c39bff",13.0,"В"]};
+let P=[];
+const tl=[
+  [0.0,()=>show("hook")],
+  [2.6,()=>{hide("hook");show("map")}],
+  [5.2,()=>{hide("map");show("cN")}],
+  [7.8,()=>{hide("cN");show("cS")}],
+  [10.4,()=>{hide("cS");show("cW")}],
+  [13.0,()=>{hide("cW");show("cE")}],
+  [15.6,()=>{hide("cE");show("box")}],
+  [18.4,()=>{hide("box");show("ask")}],
+  [21.0,()=>{hide("ask");show("cta")}],
+];
+let t0=null; const now=()=>(performance.now()-t0)/1000;
+let k=0; const ease=t=>1-Math.pow(1-t,3); const cl=v=>Math.max(0,Math.min(1,v));
+function col(lv,a){ const c=lv>=17?"255,176,61":lv>=12?"255,120,90":"200,215,255"; return `rgba(${c},${a})`; }
+function draw(){
+  if(t0===null) t0=performance.now();
+  const t=now();
+  while(k<tl.length&&t>=tl[k][0]){tl[k][1]();k++}
+  ctx.setTransform(S,0,0,S,0,0); ctx.globalAlpha=1;
+  const g=ctx.createLinearGradient(0,0,0,H); g.addColorStop(0,"#0b0e1a"); g.addColorStop(.6,"#141a36"); g.addColorStop(1,"#2a1a30");
+  ctx.fillStyle=g; ctx.fillRect(0,0,W,H);
+  ctx.strokeStyle="rgba(255,255,255,.08)"; ctx.lineWidth=1; ctx.beginPath(); ctx.roundRect(MX,MY,MW,MH,14); ctx.stroke();
+  const appear=t<2.6? cl(t/2.4)*0.25 : 0.25+0.75*ease(cl((t-2.6)/2.4));
+  const n=Math.floor(P.length*appear), dim=t>=5.2?(t>=18.4?.3:.45):1;
+  for(let i=0;i<n;i++){ const p=P[i]; ctx.fillStyle=col(p[2],.85*dim); ctx.beginPath(); ctx.arc(px(p[1]),py(p[0]),1.9+(p[2]-9)*0.22,0,7); ctx.fill(); }
+  // граничные линии от каждой крайней точки
+  for(const key of ["N","S","W","E"]){ const [la,lo,cc,st,lb]=X[key]; if(t<st) continue;
+    const q=ease(cl((t-st)/.8)), x=px(lo), y=py(la), active=t<st+2.6, fade=t>=18.4?.35:1;
+    ctx.save(); ctx.setLineDash([6,6]); ctx.strokeStyle=cc; ctx.globalAlpha=(active?.9:.55)*fade; ctx.lineWidth=2; ctx.beginPath();
+    if(key==="N"||key==="S"){ ctx.moveTo(x-(x-MX)*q,y); ctx.lineTo(x+(MX+MW-x)*q,y); } else { ctx.moveTo(x,y-(y-MY)*q); ctx.lineTo(x,y+(MY+MH-y)*q); }
+    ctx.stroke(); ctx.restore();
+    ctx.globalAlpha=fade; const pulse=active?(Math.sin((t-st)*6)+1)/2:0;
+    ctx.strokeStyle=cc; ctx.lineWidth=3; ctx.beginPath(); ctx.arc(x,y,8+pulse*8,0,7); ctx.stroke();
+    ctx.fillStyle="#fff"; ctx.beginPath(); ctx.arc(x,y,4.5,0,7); ctx.fill();
+    ctx.font="900 15px system-ui"; ctx.textAlign="center"; ctx.fillStyle=cc;
+    const ox=key==="W"?18:key==="E"?-18:0, oy=key==="N"?-14:key==="S"?24:5; ctx.fillText(lb,x+ox,y+oy); ctx.globalAlpha=1; }
+  // размеры
+  if(t>=15.6&&t<18.4){ const q=ease(cl((t-15.8)/.8)); ctx.globalAlpha=q;
+    const yN=py(X.N[0]), yS=py(X.S[0]), xW=px(X.W[1]), xE=px(X.E[1]);
+    ctx.strokeStyle="#ffb03d"; ctx.lineWidth=3; ctx.strokeRect(xW,yN,xE-xW,yS-yN);
+    ctx.font="900 18px system-ui"; ctx.fillStyle="#ffb03d"; ctx.textAlign="center";
+    const lab=(s,x,y)=>{const w=ctx.measureText(s).width; ctx.fillStyle="rgba(8,10,20,.9)"; ctx.beginPath(); ctx.roundRect(x-w/2-8,y-17,w+16,24,12); ctx.fill(); ctx.fillStyle="#ffb03d"; ctx.fillText(s,x,y);};
+    lab("↔ 16,7 км",(xW+xE)/2,yS+30); ctx.save(); ctx.translate(xE-22,(yN+yS)/2); ctx.rotate(-Math.PI/2); lab("↕ 13,4 км",0,6); ctx.restore(); ctx.globalAlpha=1; }
+  if(t>=21.0){ ctx.fillStyle=`rgba(8,10,16,${.85*cl((t-21.0)/.5)})`; ctx.fillRect(0,0,W,H); }
+  requestAnimationFrame(draw);
+}
+fetch("../data/buildings.json").then(r=>r.json()).then(d=>{
+  P=d.buildings.map(b=>[b.lat,b.lon,b.lv]);
+  P.sort((a,b)=>Math.hypot(a[0]-54.7065,(a[1]-20.5115)*KX)-Math.hypot(b[0]-54.7065,(b[1]-20.5115)*KX));
+  requestAnimationFrame(draw);
+});
+window.__dur=24.5;
+</script></body></html>
